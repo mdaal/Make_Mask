@@ -539,23 +539,24 @@ if 0:
 	#The channel object can be read from and written to, connecting with stdout and stdin of the remote command. You can get at stderr by calling channel.makefile_stderr(...)
 
 
+if 0:
+
+	cmd = """SELECT Computed_Parameters.resonator_id,Computed_Parameters.sensor_id,Resonators.Design_Freq,Resonators.Width,Computed_Parameters.Design_Q,Computed_Parameters.Coupler_Zone,Sensors.Through_Line_Width, 
+	Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
+	Computed_Parameters.Through_Line_Eeff,Computed_Parameters.Resonator_Length,Computed_Parameters.Meander_Pitch,Computed_Parameters.Meander_Zone,Computed_Parameters.Meander_Length,Computed_Parameters.Through_Line_Length,
+	Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
+	Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
 
 
-cmd = """SELECT Computed_Parameters.resonator_id,Computed_Parameters.sensor_id,Resonators.Design_Freq,Resonators.Width,Computed_Parameters.Design_Q,Computed_Parameters.Coupler_Zone,Sensors.Through_Line_Width, 
-Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
-Computed_Parameters.Through_Line_Eeff,Computed_Parameters.Resonator_Length,Computed_Parameters.Meander_Pitch,Computed_Parameters.Meander_Zone,Computed_Parameters.Meander_Length,Computed_Parameters.Through_Line_Length,
-Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
-Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
+	records = Mask_DB.Get_Mask_Data(cmd)
+	f = open('Mask_Parameters.csv', mode = 'w')
+	f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad],\n"))
 
+	for rec in records:
+		f.write(unicode(str(rec).lstrip('(').rstrip(')')+',\n'))
 
-records = Mask_DB.Get_Mask_Data(cmd)
-f = open('Mask_Parameters.csv', mode = 'w')
-f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad],\n"))
-
-for rec in records:
-	f.write(unicode(str(rec).lstrip('(').rstrip(')')+',\n'))
-
-f.close()
+	#probably want to remove final ',\n' manually
+	f.close()
 
 if 0:
 	#############
