@@ -4,7 +4,7 @@ import gdspy
 import os
 import Mask_DB
 
-def Draw_Mask(Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pillar_Layer = 3):
+def Draw_Mask(Save_Path, Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pillar_Layer = 3):
 	
 	#For Test Only! Remove when deployed
 	gdspy.Cell.cell_dict = {}
@@ -37,7 +37,108 @@ def Draw_Mask(Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pillar_Layer = 
 			mask_cell.add(gdspy.CellReference(sensor_cell, (Mask_Cell_X_Length*row + -Mask_Cell_X_Length*Mask_Rows/2, -Mask_Cell_Y_Length*(col+1) + Mask_Cell_Y_Length*Mask_Columns/2)))
 			sens_index += 1
 
-	name = os.path.abspath(os.path.dirname(os.sys.argv[0])) + os.sep + 'mask'
+	
+	##################
+	# Draw Alignment Marks
+	##################
+
+	def draw_alignment(Inner_Cross_Layer, Outer_Cross_Layer,Inner_Cross_Thickness,Outer_Cross_Thickness,Outer_Cross_Width, Guidelines = True, Outer_Only = False, *arg):
+		""" Inner_Cross_Thickness is line width of cross
+		Outer_Cross_Thickness is line width of outer cross
+		Outer_Cross_Width is overall width and height of cross
+		Guidelines = True -- draws stepped guidlines which point to alignment cross
+		Outer_Only =  True  -- draws only the outer features on each layer: Inner_Cross_Layer, Outer_Cross_Layer
+		if Outer_Cross_Thickness == 0 only the inner features are drawn on each layer: Inner_Cross_Layer, Outer_Cross_Layer
+		"""
+
+		Inner_Cross_Thickness = float(Inner_Cross_Thickness)
+		Outer_Cross_Thickness = float(Outer_Cross_Thickness)
+		Outer_Cross_Width = float(Outer_Cross_Width)
+		if arg is not ():
+			ang = arg[0]
+		else:
+			ang = 0
+
+		def draw_cross(Layer,cross_line_width,cross_width):
+			"""cross_line_width is line width of cross
+			cross_width is Overall width and height of cross """
+			P_1 = gdspy.Path(cross_line_width, (-cross_width/2, 0))
+			P_1.segment(Layer,cross_width, '+x')
+			P_2 = gdspy.Path(cross_line_width, (0,-cross_width/2))
+			P_2.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			P_3 = gdspy.Path(cross_line_width, (P_2.x,P_2.y+cross_line_width))
+			P_3.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			return P_1.polygons+P_2.polygons+ P_3.polygons
+
+		def draw_guide_lines(Layer,Line_Width_Start,Length,Steps):
+			polygons = []
+			for i in xrange(1,Steps+1):
+				polygons.append(gdspy.Path(Line_Width_Start*i,(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps),0)).segment(Layer,Length/Steps,'+x').polygons)
+			for i in xrange(1,Steps+1):
+				polygons.append(gdspy.Path(Line_Width_Start*i,(-(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps)),0)).segment(Layer,Length/Steps,'-x').polygons)
+			return 	reduce(lambda x, y: x+y,polygons)
+
+		cross_line_width = Inner_Cross_Thickness  #line width of cross
+		cross_width = Outer_Cross_Width - 2*Outer_Cross_Thickness # overall width and height of cross
+
+		i = draw_cross(Inner_Cross_Layer,cross_line_width,cross_width)
+		inner_cross_poly_set = gdspy.PolygonSet(Inner_Cross_Layer,i).rotate(ang, center=(0, 0))
+
+		if Outer_Cross_Thickness==0:
+			o = draw_cross(Outer_Cross_Layer,cross_line_width,cross_width)
+			outer_cross_poly_set = gdspy.PolygonSet(Outer_Cross_Layer,o).rotate(ang, center=(0, 0))
+		else:
+			o = draw_cross(Outer_Cross_Layer,3*cross_line_width,Outer_Cross_Width)
+			primitives = [gdspy.PolygonSet(0,i),gdspy.PolygonSet(0, o)]
+			subtraction = lambda p1, p2: p2 and not p1
+			outer_cross_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
+		
+		if Outer_Only == True:
+			inner_cross_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
+		
+		poly_set_list = [inner_cross_poly_set, outer_cross_poly_set]
+
+		if Guidelines == True:
+			guide_line_length = 5*Outer_Cross_Width
+			num_steps = 3
+			gi = draw_guide_lines(Inner_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
+			inner_guide_line_poly_set = gdspy.PolygonSet(Inner_Cross_Layer, gi)
+
+			if Outer_Cross_Thickness==0:
+				go = draw_guide_lines(Outer_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
+				outer_guide_line_poly_set = gdspy.PolygonSet(Outer_Cross_Layer, go)
+			else:
+				go = draw_guide_lines(Outer_Cross_Layer,2*Outer_Cross_Thickness+Inner_Cross_Thickness ,guide_line_length,num_steps)
+				primitives = [gdspy.PolygonSet(0,gi),gdspy.PolygonSet(0, go)]
+				subtraction = lambda p1, p2: p2 and not p1
+				outer_guide_line_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199)
+			
+			if Outer_Only == True:
+				inner_guide_line_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199)
+
+			poly_set_list.append(inner_guide_line_poly_set)
+			poly_set_list.append(outer_guide_line_poly_set)
+
+		align_cell = gdspy.Cell('Alignment_Mark', exclude_from_global=True)
+		align_cell.add(poly_set_list)	
+		return align_cell
+
+
+	align_mark_y_separation = 400.
+	align_mark_x_separation = 48600.
+	align_mark_set_separation = 10800.
+	align_cell1 = draw_alignment(Pillar_Layer, Resonator_Trace_Layer,10,10,200,True,True,0*np.pi/4) #Outer_Only == True because Pillar_Layerwill be polarity reversed
+	align_cell2 = draw_alignment(Through_Line_Layer, Resonator_Trace_Layer,5,5,200,True,False,np.pi/4)
+
+	align_cell_ref = gdspy.CellArray(align_cell1, 2, 2, [align_mark_x_separation,align_mark_y_separation], origin=(-align_mark_x_separation/2, -align_mark_y_separation/2), rotation=None, magnification=None, x_reflection=False)
+
+	mask_cell.add(align_cell_ref)
+	align_cell_ref = gdspy.CellArray(align_cell2, 2, 2, [align_mark_x_separation+align_mark_set_separation,align_mark_y_separation], origin=(-(align_mark_x_separation+align_mark_set_separation)/2, -align_mark_y_separation/2), rotation=None, magnification=None, x_reflection=False)
+
+	mask_cell.add(align_cell_ref)
+	mask_cell.flatten()
+	name = Save_Path + os.sep + 'mask'
+	#name = os.path.abspath(os.path.dirname(os.sys.argv[0])) + os.sep + 'mask'
 
 	## Output the layout to a GDSII file (default to all created cells).
 	## Set the units we used to micrometers and the precision to nanometers.

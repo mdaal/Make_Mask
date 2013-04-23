@@ -91,6 +91,8 @@ def Q2S(Q):
 
 
 def Compute_Coupler(Resonator_ID):
+	""" Computes Line coupler length and  Aux coupler length, if an Aux coupler is needed. Uses this to compute Resonator Length (which is length of the meander excluding the coupler).
+		Adds resonator and through line Eeff and Port_Z to table of computed parameters"""
 	Coupler_Length = 0.0
 	Aux_Coupler_Length = 0.0
 	_Length = 0.0
@@ -104,6 +106,18 @@ def Compute_Coupler(Resonator_ID):
 	
 	Sim = Mask_DB.Get_Simulation_Data(Geometry, "CouplerSweep")
 
+	######## Extract  Resonator and Throughline Eeff #####
+	Sim.values('Eeff')
+	Eeff = sp.absolute(Sim.interp(Freq,Parameter_Value = Sim.Pmax))
+	Resonator_Eeff  = Eeff[2]
+	Through_Line_Eeff = Eeff[1]
+
+	Sim.values('Port_Z0')
+	Port_Z0 = sp.absolute(Sim.interp(Freq,Parameter_Value = Sim.Pmax))
+	Resonator_Impedance  = Port_Z0[2]
+	Through_Line_Impedance = Port_Z0[1]	
+	########
+	
 	Sim.values('Port_S')
 	try:
 		offset = Sim.optvalues(Freq,Q2S(Coupler_Zone_Q_Limit),2,0)[0] #May fail if S31 at Sim.Pmax yelds  Q < Coupler_Zone_Q_Limit 
@@ -140,7 +154,7 @@ def Compute_Coupler(Resonator_ID):
 		Coupler_Length = Sim.optvalues(Freq,Q2S(Design_Q),2,0)[0]
 		_Length = Coupler_Length
 
-	print(Sim.Parameter_Name)
+	
 	#compute resonator length
 	Coupler_Phase_Change = sp.absolute(sp.angle(Sim.interp(Freq,Parameter_Value = _Length)[2,2], deg = False))  + delta_coupler_phase #radians
 
@@ -152,9 +166,10 @@ def Compute_Coupler(Resonator_ID):
 	#print(Sim.Current_Attribute,{"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change})
 
 
-	Mask_DB.Update_Computed_Parameters(Resonator_ID, {"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change, "Resonator_Length" : Resonator_Length} )	
+	Mask_DB.Update_Computed_Parameters(Resonator_ID, {"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change, "Resonator_Length" : Resonator_Length,"Resonator_Eeff":Resonator_Eeff, "Through_Line_Eeff":Through_Line_Eeff, "Resonator_Impedance":Resonator_Impedance,"Through_Line_Impedance":Through_Line_Impedance} )	
 	return (Coupler_Zone,Design_Q,Aux_Coupler_Length,Coupler_Length, sp.rad2deg(Coupler_Phase_Change),Resonator_Length)
 
+	
 
 	
 

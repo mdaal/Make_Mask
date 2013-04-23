@@ -280,7 +280,287 @@ if 0:
 	def fun2(x): return -1*fun(x)
 	xmax = optimize.fminbound(fun2, Sim.Pmin, Sim.Pmax)
 
-if 1:
+if 0:
+	import gdspy
+	import os
+	#For Test Only! Remove when deployed
+	gdspy.Cell.cell_dict = {}
+
+	align_cell = gdspy.Cell('Alignment_Marks')
+	align_cell2 = gdspy.Cell('Alignment_Marks2')
+	width_1 = 5  #Width of X on pillar layer
+	width_2 = 10 #Width of X on Through Line layer
+	P_1 = gdspy.Path(width_1, (0, 10))
+
+	Through_Line_Layer = 1
+	Resonator_Trace_Layer = 2
+	Pillar_Layer = 3
+	primitives = []
+	# P1=gdspy.Rectangle(7, (2.5, 2.5), (100+2.5, 100+2.5))
+	# P2=gdspy.Rectangle(7, (-2.5, 2.5), (-(100+2.5), (100+2.5)))
+	# P3=gdspy.Rectangle(7, (-2.5, -2.5), (-(100+2.5), -(100+2.5)))
+	# P4=gdspy.Rectangle(7, (2.5, -2.5), ((100+2.5), -(100+2.5)))
+
+	align_cell.add(gdspy.Rectangle(7, (2.5, 2.5), (100+2.5, 100+2.5)))
+	align_cell.add(gdspy.Rectangle(7, (-2.5, 2.5), (-(100+2.5), (100+2.5))))
+	align_cell.add(gdspy.Rectangle(7, (-2.5, -2.5), (-(100+2.5), -(100+2.5))))
+	align_cell.add(gdspy.Rectangle(7, (2.5, -2.5), ((100+2.5), -(100+2.5))))
+
+	align_cell2.add(gdspy.Rectangle(7, (-(100+2.5), -(100+2.5)), ((100+2.5), (100+2.5))))
+
+	#primitives.append(gdspy.PolygonSet(0, [P1.points ,P2.points,P3.points,P4.points]))
+	#primitives.append(gdspy.PolygonSet(0,B.points))
+	primitives = [gdspy.CellReference(align_cell, origin=(0, 0)), gdspy.CellReference(align_cell2, origin=(0, 0))]
+
+	subtraction = lambda p1, p2: p2 and not p1
+	bool_cell = gdspy.Cell('Bool_Alignment_Marks')
+	bool_cell.add(gdspy.boolean(1, primitives, subtraction, max_points=199))	
+
+
+	name = os.path.abspath(os.path.dirname(os.sys.argv[0])) + os.sep + 'bool_align_mark'
+
+	## Output the layout to a GDSII file (default to all created cells).
+	## Set the units we used to micrometers and the precision to nanometers.
+	gdspy.gds_print(name + '.gds', unit=1.0e-6, precision=1.0e-9)
+	print('Sample gds file saved: ' + name + '.gds')
+
+	## Save an image of the boolean cell in a png file.  Resolution refers
+	## to the number of pixels per unit in the layout. Resolution changed from 4
+	## to 1 to avoid  "malloc_error"
+	#gdspy.gds_image([resonator_cell], image_name=name, resolution=1, antialias=4)
+
+	#comment out save as png for speed
+	#print('Image of the boolean cell saved: ' + name + '.png')
+
+	## Import the file we just created, and extract the cell 'POLYGONS'. To
+	## avoid naming conflict, we will rename all cells.
+	#gdsii = gdspy.GdsImport(name + '.gds')
+
+	## Now we extract the cells we want to actually include in our current
+	## structure. Note that the referenced cells will be automatically
+	## extracted as well.
+	#gdsii.extract('IMPORT_REFS')
+	    
+	## View the layout using a GUI.  Full description of the controls can
+	## be found in the online help at http://gdspy.sourceforge.net/
+	gdspy.LayoutViewer(colors=[None] * 64)
+
+if 0:
+	import gdspy
+	import os
+	import numpy as np
+	#For Test Only! Remove when deployed
+	gdspy.Cell.cell_dict = {}
+
+	#inner_cross_cell = gdspy.Cell('Inner_Cross')
+	#outer_cross_cell = gdspy.Cell('Outer_Cross')
+
+	Through_Line_Layer = 1
+	Resonator_Trace_Layer = 2
+	Pillar_Layer = 3
+
+	# P_4 = gdspy.Path(cross_line_width, (0, 0))
+	# rt2 = np.sqrt(2)
+	# P_4.segment(Layer,(rt2*cross_width/2) , np.pi/4)
+	def draw_alignment(Inner_Cross_Layer, Outer_Cross_Layer,Inner_Cross_Thickness,Outer_Cross_Thickness,Outer_Cross_Width, Guidelines = True, Outer_Only = False, *arg):
+		""" Inner_Cross_Thickness is line width of cross
+		Outer_Cross_Thickness is line width of outer cross
+		Outer_Cross_Width is overall width and height of cross
+		Guidelines = True -- draws stepped guidlines which point to alignment cross
+		Outer_Only =  True  -- draws only the outer features on each layer: Inner_Cross_Layer, Outer_Cross_Layer
+		if Outer_Cross_Thickness == 0 only the inner features are drawn on each layer: Inner_Cross_Layer, Outer_Cross_Layer
+		"""
+
+		Inner_Cross_Thickness = float(Inner_Cross_Thickness)
+		Outer_Cross_Thickness = float(Outer_Cross_Thickness)
+		Outer_Cross_Width = float(Outer_Cross_Width)
+		if arg is not ():
+			ang = arg[0]
+		else:
+			ang = 0
+
+		def draw_cross(Layer,cross_line_width,cross_width):
+			"""cross_line_width is line width of cross
+			cross_width is Overall width and height of cross """
+			P_1 = gdspy.Path(cross_line_width, (-cross_width/2, 0))
+			P_1.segment(Layer,cross_width, '+x')
+			P_2 = gdspy.Path(cross_line_width, (0,-cross_width/2))
+			P_2.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			P_3 = gdspy.Path(cross_line_width, (P_2.x,P_2.y+cross_line_width))
+			P_3.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			return P_1.polygons+P_2.polygons+ P_3.polygons
+
+		def draw_guide_lines(Layer,Line_Width_Start,Length,Steps):
+			polygons = []
+			for i in xrange(1,Steps+1):
+				polygons.append(gdspy.Path(Line_Width_Start*i,(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps),0)).segment(Layer,Length/Steps,'+x').polygons)
+			for i in xrange(1,Steps+1):
+				polygons.append(gdspy.Path(Line_Width_Start*i,(-(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps)),0)).segment(Layer,Length/Steps,'-x').polygons)
+			return 	reduce(lambda x, y: x+y,polygons)
+
+		cross_line_width = Inner_Cross_Thickness  #line width of cross
+		cross_width = Outer_Cross_Width - 2*Outer_Cross_Thickness # overall width and height of cross
+
+		i = draw_cross(Inner_Cross_Layer,cross_line_width,cross_width)
+		inner_cross_poly_set = gdspy.PolygonSet(Inner_Cross_Layer,i).rotate(ang, center=(0, 0))
+
+		if Outer_Cross_Thickness==0:
+			o = draw_cross(Outer_Cross_Layer,cross_line_width,cross_width)
+			outer_cross_poly_set = gdspy.PolygonSet(Outer_Cross_Layer,o).rotate(ang, center=(0, 0))
+		else:
+			o = draw_cross(Outer_Cross_Layer,3*cross_line_width,Outer_Cross_Width)
+			primitives = [gdspy.PolygonSet(0,i),gdspy.PolygonSet(0, o)]
+			subtraction = lambda p1, p2: p2 and not p1
+			outer_cross_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
+		
+		if Outer_Only == True:
+			inner_cross_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
+		
+		poly_set_list = [inner_cross_poly_set, outer_cross_poly_set]
+
+		if Guidelines == True:
+			guide_line_length = 5*Outer_Cross_Width
+			num_steps = 3
+			gi = draw_guide_lines(Inner_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
+			inner_guide_line_poly_set = gdspy.PolygonSet(Inner_Cross_Layer, gi)
+
+			if Outer_Cross_Thickness==0:
+				go = draw_guide_lines(Outer_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
+				outer_guide_line_poly_set = gdspy.PolygonSet(Outer_Cross_Layer, go)
+			else:
+				go = draw_guide_lines(Outer_Cross_Layer,2*Outer_Cross_Thickness+Inner_Cross_Thickness ,guide_line_length,num_steps)
+				primitives = [gdspy.PolygonSet(0,gi),gdspy.PolygonSet(0, go)]
+				subtraction = lambda p1, p2: p2 and not p1
+				outer_guide_line_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199)
+			
+			if Outer_Only == True:
+				inner_guide_line_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199)
+
+			poly_set_list.append(inner_guide_line_poly_set)
+			poly_set_list.append(outer_guide_line_poly_set)
+
+		align_cell = gdspy.Cell('Alignment_Mark', exclude_from_global=True)
+		align_cell.add(poly_set_list)	
+		return align_cell
+
+
+	align_mark_y_separation = 200.
+	align_mark_x_separation = 50000.
+	align_mark_set_separation = 5000.
+	align_cell1 = draw_alignment(Pillar_Layer, Resonator_Trace_Layer,5,5,100,True,True,0*np.pi/4) #Outer_Only == True because Pillar_Layerwill be polarity reversed
+	align_cell2 = draw_alignment(Through_Line_Layer, Resonator_Trace_Layer,10,10,200,True,False,np.pi/4)
+	test_cell =  gdspy.Cell('Test_Cell')
+	test_cell_ref = gdspy.CellArray(align_cell1, 2, 2, [align_mark_x_separation,align_mark_y_separation], origin=(-align_mark_x_separation/2, -align_mark_y_separation/2), rotation=None, magnification=None, x_reflection=False)
+
+	test_cell.add(test_cell_ref)
+	test_cell_ref = gdspy.CellArray(align_cell2, 2, 2, [align_mark_x_separation+align_mark_set_separation,align_mark_y_separation], origin=(-(align_mark_x_separation+align_mark_set_separation)/2, -align_mark_y_separation/2), rotation=None, magnification=None, x_reflection=False)
+
+	test_cell.add(test_cell_ref)
+
+
+	name = os.path.abspath(os.path.dirname(os.sys.argv[0])) + os.sep + 'align_mark'
+	gdspy.gds_print(name + '.gds', unit=1.0e-6, precision=1.0e-9)
+	print('Sample gds file saved: ' + name + '.gds')
+	#gdspy.LayoutViewer(colors=[None] * 64)
+	gdspy.LayoutViewer()
+
+if 0:
+	import os
+	import Parse_Sonnet_Response
+	reload(Parse_Sonnet_Response)
+	File_Name_or_String = '/Users/miguel_daal/Documents/Projects/Make_Mask_Code/Make_Mask/Sonnet_Files/20130402/CouplerSweep_TLW395TLG000RW256SG03ST500E1120_20130402_214356_Output'
+	if os.path.isdir(File_Name_or_String):
+		summary_file = ''
+		for files in os.listdir(File_Name_or_String):
+			if files.endswith("files.txt"):
+				summary_file = files
+				break
+		if summary_file == '':
+			raise RuntimeError('No summary file found for simulation data')
+		f = io.open(File_Name_or_String+ os.sep +summary_file , mode='r')
+		line = f.next()
+		Agg_File_Set = False
+		while 1:
+			if line.startswith('USER_FILE') and Agg_File_Set == False:
+				Agg_File = line.split(' ')[1].strip('\n').strip('.s3p')+'_Aggregated.s3p'
+				Agg_File_Path = File_Name_or_String+ os.sep +Agg_File 
+				Agg_File = io.open(Agg_File_Path , mode='w')
+				Agg_File_Set = True
+			if line.startswith('OUTPUT_FILE'):
+				s3p_file = line.split(' ')[1].strip('\n')
+				s3p_file = io.open(File_Name_or_String+ os.sep +s3p_file , mode='r')
+				Agg_File.write(s3p_file.read())
+				Agg_File.write(unicode('\n%%\n\n'))
+				s3p_file.close()
+			try:
+				line = f.next()
+			except:
+				Agg_File.close()
+				f.close()
+				break
+if 0:
+	import gdspy
+	#File = 'Mask_Files/mask.gds'
+	File = 'Mask_Test_2/mask.gds'
+	gdspy.Cell.cell_dict = {}
+	gdsii = gdspy.GdsImport(File)
+	for cell_name in gdsii.cell_dict:
+		gdsii.extract(cell_name)
+	gdspy.LayoutViewer()
+
+if 0:
+	try:
+	    client = SSHClient()
+	    client.load_system_host_keys()
+	    client.connect('ssh.example.com')
+	    stdin, stdout, stderr = client.exec_command('ls -l')
+	finally:
+	    if client:
+	        client.close()
+
+
+	#Instead of calling exec_command on the client, get hold of the transport and generate your own channel. The channel can be used to execute a command, 
+	#and you can use it in a select statement to find out when data can be read:
+
+	#!/usr/bin/env python
+	import paramiko
+	import select
+	client = paramiko.SSHClient()
+	client.load_system_host_keys()
+	client.connect('host.example.com')
+	transport = client.get_transport()
+	channel = transport.open_session()
+	channel.exec_command("tail -f /var/log/everything/current")
+	while True:
+	  rl, wl, xl = select.select([channel],[],[],0.0)
+	  if len(rl) > 0:
+	      # Must be stdout
+	      print channel.recv(1024)
+	#The channel object can be read from and written to, connecting with stdout and stdin of the remote command. You can get at stderr by calling channel.makefile_stderr(...)
+
+
+
+
+cmd = """SELECT Computed_Parameters.resonator_id,Computed_Parameters.sensor_id,Resonators.Design_Freq,Resonators.Width,Computed_Parameters.Design_Q,Computed_Parameters.Coupler_Zone,Sensors.Through_Line_Width, 
+Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
+Computed_Parameters.Through_Line_Eeff,Computed_Parameters.Resonator_Length,Computed_Parameters.Meander_Pitch,Computed_Parameters.Meander_Zone,Computed_Parameters.Meander_Length,Computed_Parameters.Through_Line_Length,
+Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
+Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
+
+
+records = Mask_DB.Get_Mask_Data(cmd)
+f = open('Mask_Parameters.csv', mode = 'w')
+f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad],\n"))
+
+for rec in records:
+	f.write(unicode(str(rec).lstrip('(').rstrip(')')+',\n'))
+
+f.close()
+
+if 0:
+	#############
+	# Run This to generate Mask
+	#############
 	import Make_Mask
 	reload(Make_Mask)
 	import Sonnet_Interface
@@ -295,7 +575,20 @@ if 1:
 	reload(Mask_DB)
 	import Compute_Parameters
 	reload(Compute_Parameters)
+	import Draw_Resonator
+	reload(Draw_Resonator)
+	import Draw_Sensor
+	reload(Draw_Sensor)
+	import Draw_Mask
+	reload(Draw_Mask)
 
-	num_simulation = Make_Mask.Make_Mask('Mask_Files',File_Name = "Mask_Data.db") #why not :memory:??
-	Make_Mask.Execute_Coupler_Simulations(num_simulation)
+
+	Folder = 'Mask_Files'
+	#Folder = 'Mask_Test_2'
+	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db") #why not :memory:??
+	Make_Mask.Execute_Coupler_Simulations()
+	Make_Mask.Compute_All_Mask_Parameters()
+	Draw_Mask.Draw_Mask(Folder)
+	#print(10*'\a')
+
 

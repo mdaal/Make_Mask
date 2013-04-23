@@ -25,9 +25,11 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	if len(Sensor_Params) > 1:
 		print("Something is wrong. There are more than one senor #" + str(Sensor_Number) + ". Using the first one pulled.")
 
+	Pillar_Grid_Spacing_Reduction_Factor = 3.0
+
 	X_Length, Y_Length, Cut_Line_Width, Pillar_Diameter, Pillar_Grid_Spacing, Pillar_Clearance, Through_Line_Type, Through_Line_Width, Through_Line_Turn_Radius,Through_Line_Gap, Through_Line_Edge_Offset = Sensor_Params[0]
 	Pillar_Radius = Pillar_Diameter/2
-
+	Pillar_Grid_Spacing = Pillar_Grid_Spacing*Pillar_Grid_Spacing_Reduction_Factor
 	#Initialize Sensor Cell
 	sensor_cell_name = 'SENSOR_'+str(Sensor_Number)
 	sensor_cell = gdspy.Cell(sensor_cell_name,exclude_from_global=True)
@@ -42,10 +44,9 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	sensor_cell.add(gdspy.boolean(Resonator_Trace_Layer, primitives, subtraction, max_points=199))
 
 	#Add the name of the sensor in the lower left of the die
-	Text_Offset = 60
-	sensor_cell.add(gdspy.Text(Resonator_Trace_Layer, 'S' + str(Sensor_Number), 300, (Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset)))
+	Text_Offset = 100
 
-	
+	sensor_cell.add(gdspy.Text(Resonator_Trace_Layer, 'S' + str(Sensor_Number), 300, (Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset)))
 	#Draw Throughline
 	#assuming L shape
  	Though_Line_Trace = gdspy.Path(Through_Line_Width, (X_Length/2, 0))
@@ -92,7 +93,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	
 	for ID in Res_IDs:
 		resonator_id,Coupler_Zone, Head_Space,Design_Freq,Design_Q = ID
-		Resonator_Name = 'F' + str(Design_Freq) + ' Qc' + str(Design_Q) + ' R' + str(resonator_id)
+		Resonator_Name = 'F' + str(Design_Freq) + ' Qc' + str(int(Design_Q)) + ' R' + str(resonator_id)
 		#Resonator_Name = 'S' + str(Sensor_Number) + 'R' + str(Res_Number) + '#' + str(resonator_id)
 		resonator_cell,_y_initial = Draw_Resonator(Resonator_Name=Resonator_Name,Resonator_ID=resonator_id, Resonator_Trace_Layer = Resonator_Trace_Layer, Pillar_Layer = Pillar_Layer, Y_Pitch_Tight = True, X_Pitch_Tight = True,Update_DB = True)
 

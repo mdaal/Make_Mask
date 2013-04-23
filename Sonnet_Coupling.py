@@ -18,12 +18,11 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
     Simulation_Type = "PortCalc" is determine port PortCalc impedances and Eeff (2)
 
 
-    returns: (sonnet_path,  F_N, Simulation_Geometry, Simulation_Type_Names[Simulation_Type], Coupler_Space) 
+    returns: (sonnet_path,  F_N, Simulation_Geometry, Simulation_Type_Name, Coupler_Space) 
     File_Name looks like: CouplerSweep_TLW360TLG00RW200SG03ST500E1120_20130228_143425.son
     Simulation_Geometry looks like: TLW360TLG00RW200SG03ST500E1120
-    Simulation_Type_Names[Simulation_Type] looks like: CouplerSweep
+    Simulation_Type_Name looks like: 'CouplerSweep'
     '''
-    Simulation_Type_Names = {0:"CouplerSweep",1:"AuxCouplerSweep",2:"PortCalc"}
 
     simulation_parameters = Mask_DB.Get_Mask_Data("SELECT  Resonators.Width, Sensors.Through_Line_Width, Sensors.Through_Line_Gap, Sensors.X_Length FROM Resonators, Sensors, Wafer WHERE Resonators.sensor_id = Sensors.sensor_id AND Resonators.simid = " + str(simid) + " ORDER BY Sensors.X_Length ASC", 'one')
 
@@ -42,27 +41,14 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
     Frequency_Sweep_Start = float(simulation_parameters[3]) # GHz* 10**9 # Hertz
     Frequency_Sweep_End = float(simulation_parameters[4]) # GHz * 10**9 # Hertz
 
-    #print((Resonator_Width,Through_Line_Width, Through_Line_CPW_Gap,Sensor_X_Length,Substrate_Thickness,Dielectric_Constant,Substrate_Gap,Frequency_Sweep_Start,Frequency_Sweep_End))
     
     Coupler_Length = 3000.# not really Coupler length. This is the max separation between throughline and edge of "couple" in the simulation 
     
-    ###############################
-    #If Renormalization of Sparam matrix does not work then use below to extract port impedances from database..... 
-    ###############################
-    # cursor.execute("SELECT * FROM Computed_Values WHERE simid = " + str(simid))
-    # simulation_parameters = cursor.fetchone()
-    # if simulation_parameters[1] != None: #If the Through_Line_Impedance is not None then it and Resonator_Impedance are defined 
-    #     Through_Line_Impedance = float(simulation_parameters[1])
-    #     Resonator_Impedance = float(simulation_parameters[2])
-    # else:
-    #     Resonator_Impedance = 50; 
-    #     Through_Line_Impedance = 50;
-    ################################
 
     Resonator_Impedance = 50; 
     Through_Line_Impedance = 50;
 
-    Top_Space = 10000. # space between the surface of through line layer and top of simulation box.
+    Top_Space = 1524. # space between the surface of through line layer and top of simulation box. AKA - thicnkess of Teflon Press
     Box_Head_Space = 5000. #Space between top of simpulation box and Resonator Origon
 
 
@@ -78,13 +64,18 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
         Coupler_Zone = 9000 #Not really Coupler zone. This defines the width of the simulation box on the right side of the through line.
     ###
 
-
+    Al_Ls = 0.201 #Superconducting Aluminum Sheet Inductance
+    Nb_Ls = 0.049  #Superconducting Niobium Sheet Inductance
+    Teflon_Er = 2.08
+    Teflon_Loss = 0.00001
+    Num_Cells_Per_Res_Width = 3.0 #Sets the number of cells that fit in width of the resonator.
+    Num_Cells_Per_TL_Width = 3.0 #Sets the number of cells that fit in width of the Through Line.
 
     if Resonator_Width > Through_Line_Width:
         (multiple,remainder) = divmod(round(Resonator_Width),round(Through_Line_Width))
-        Cell_Size_Y = Resonator_Width/multiple
+        Cell_Size_Y = Resonator_Width/(Num_Cells_Per_Res_Width*multiple)
     else:
-        Cell_Size_Y = Resonator_Width
+        Cell_Size_Y = Resonator_Width/Num_Cells_Per_Res_Width
 
 
     Box_Head_Space = round(Box_Head_Space/Cell_Size_Y)*Cell_Size_Y #change to the closest multiple of Cell_Size_Y
@@ -94,9 +85,9 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
 
 
     if Through_Line_CPW_Gap == 0: 
-        Cell_Size_X = Through_Line_Width
+        Cell_Size_X = Through_Line_Width/Num_Cells_Per_TL_Width
     else:        
-        Cell_Size_X = fractions.gcd(Through_Line_CPW_Gap,Through_Line_Width)
+        Cell_Size_X = fractions.gcd(int(Through_Line_CPW_Gap),int(Through_Line_Width))/Num_Cells_Per_TL_Width
 
 
     Box_Wall_Separation_X = round(Box_Wall_Separation_X/Cell_Size_X)*Cell_Size_X # Change to the closest multiple of Cell_Size_X to Box_Wall_Separation_X
@@ -171,23 +162,12 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
     Num_Polygons = i
 
     # --- Construct File Name -------------------------
-    Simulation_Geometry = 'TLW%03dTLG%03dRW%03dSG%02dST%03dE%04d' % (Through_Line_Width, \
-        Through_Line_CPW_Gap, Resonator_Width, Substrate_Gap, Substrate_Thickness, \
-        Dielectric_Constant*100) 
-    F_N = Simulation_Type_Names[Simulation_Type] + '_' + Simulation_Geometry + dt.now().strftime('%Y%m%d_%H%M%S') 
-    # if Simulation_Type == 1:
-    #     Simulation_Geometry = Simulation_Type_Names[Simulation_Type] + '_' + Simulation_Geometry 
-    #     F_N = Simulation_Geometry + dt.now().strftime('%Y%m%d_%H%M%S_')
-    # elif Simulation_Type == 0:
-    #     Simulation_Geometry = Simulation_Type_Names[Simulation_Type] + '_' + Simulation_Geometry
-    #     F_N = Simulation_Geometry + dt.now().strftime('%Y%m%d_%H%M%S_') 
-    # elif Simulation_Type == 2:
-    #     Simulation_Geometry = Simulation_Type_Names[Simulation_Type] +'_' + Simulation_Geometry
-    #     F_N = Simulation_Geometry + dt.now().strftime('%Y%m%d_%H%M%S_')
-
+    Simulation_Geometry = Get_Simulation_Geometry(Through_Line_Width, Through_Line_CPW_Gap, Resonator_Width, Substrate_Gap, Substrate_Thickness,Dielectric_Constant)
+    F_N = Get_Simulation_Type(Simulation_Type) + '_' + Simulation_Geometry + '_' + dt.now().strftime('%Y%m%d_%H%M%S') 
+    
 
     #--- Declare File Type, Sonnet version and state when file was created (last saved) in header
-    SON = 'FTYP SONPROJ 11 ! Sonnet Project File\n' + 'VER 13.56\n' + 'HEADER\n' + 'DAT ' + dt.now().strftime('%m/%d/%Y %H:%M:%S') + '\n' + 'END HEADER\n'
+    SON = 'FTYP SONPROJ 3 ! Sonnet Project File\n' + 'VER 11.52\n' + 'HEADER\n' + 'DAT ' + dt.now().strftime('%m/%d/%Y %H:%M:%S') + '\n' + 'END HEADER\n'
 
     #--- Specify Dimensions to be used in Sonnet File.
     SON = SON + 'DIM\n' + 'FREQ GHZ\n' + 'IND NH\n' + 'LNG UM\n' +'ANG DEG\n' + 'CON /OH \n' + 'CAP PF\n' + 'RES OH\n' + 'END DIM\n'
@@ -214,11 +194,12 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
     SON = SON + 'OPTIONS  -d\n' + 'SPEED 0\n' + 'CACHE_ABS 1\n' + 'TARG_ABS 300\n' + 'Q_ACC N\n' + 'END CONTROL\n'
 
     #--- Specify Box and Dielectric Layers
-    SON = SON +  'GEO\n'+ 'TMET "Lossless" 0 SUP 0 0 0 0\n' + 'BMET "Lossless" 0 SUP 0 0 0 0\n'
+    SON = SON +  'GEO\n'+ 'TMET "Lossless" 0 SUP 0 0 0 0\n' + 'BMET "Aluminum" 1 SUP 0 0 0 ' + str(Al_Ls)+'\n'
+    SON = SON + 'MET "Aluminum" 1 SUP 0 0 0 '+str(Al_Ls)+'\n' + 'MET "Niobium" 2 SUP 0 0 0 ' + str(Nb_Ls)+'\n'
     SON = SON + 'BOX 2 ' + str(int(Box_Size_X)) + ' ' +  str(int(Box_Size_Y)) + ' ' + str(int(2*Box_Size_X/Cell_Size_X)) + ' '+ str(int(np.ceil(2*Box_Size_Y/Cell_Size_Y))) + ' 20 0\n'
-    SON = SON + '      ' + str(Top_Space) + ' 1 1 0 0 0 0 "Air"\n'
+    SON = SON + '      ' + str(Top_Space) + ' '+ str(Teflon_Er)+' 1 '+str(Teflon_Loss)+' 0 0 0 "Teflon (PTFE)"\n'
     SON = SON + '      ' + str(Substrate_Thickness) + ' ' + str(Dielectric_Constant) + ' 1 0 0 0 0 "Dielectric"\n'
-    SON = SON + '      ' + str(Substrate_Gap) + ' 1 1 0 0 0 0 "Air"\n'
+    SON = SON + '      ' + str(Substrate_Gap) + ' 1 1 0 0 0 0 "Vacuum"\n'
 
     #--- Specify Parameters
     if Simulation_Type == 1:
@@ -302,7 +283,8 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
 
     #--- Configure Output File
     if (Simulation_Type == 1) or (Simulation_Type == 0):
-        SON = SON + 'FILEOUT\n' + 'CSV D Y $BASENAME.csv IC 8 S MA R 50\n' + 'END FILEOUT\n'
+        SON = SON + 'FILEOUT\n' + 'CSV D Y $BASENAME.csv IC 15 S RI R 50\n' + 'TS D Y $BASENAME.s3p IC 15 S RI R 50\n' 
+        SON = SON + 'FOLDER '+ F_N +'\n' + 'END FILEOUT\n'
     elif (Simulation_Type == 2):
         pass
 
@@ -344,5 +326,38 @@ def Sonnet_Coupling(simid, Simulation_Type = 0):
 
     Sonnet_Interface.Copy_To_Remote(sonnet_path,F_N)
 
-    return (sonnet_path,  F_N, Simulation_Geometry, Simulation_Type_Names[Simulation_Type], Coupler_Space) 
+    return (sonnet_path,  F_N, Simulation_Geometry, Get_Simulation_Type(Simulation_Type), Coupler_Space) 
+
+def Get_Simulation_Geometry(*Geometry, **simid):
+    """ Take either Get_Simulation_Geometry(simid = X) or
+    Get_Simulation_Geometry(Through_Line_Width, Through_Line_CPW_Gap, Resonator_Width, Substrate_Gap, Substrate_Thickness,Dielectric_Constant)"""
+    if Geometry is not () and len(Geometry) == 6 and simid == {}:
+        Through_Line_Width, Through_Line_CPW_Gap, Resonator_Width, Substrate_Gap, Substrate_Thickness,Dielectric_Constant = Geometry
+        
+    elif Geometry is () and simid is not {}:
+        simid = simid['simid']
+        
+        simulation_parameters = Mask_DB.Get_Mask_Data("SELECT  Resonators.Width, Sensors.Through_Line_Width, Sensors.Through_Line_Gap FROM Resonators, Sensors, Wafer WHERE Resonators.sensor_id = Sensors.sensor_id AND Resonators.simid = " + str(simid) + " ORDER BY Sensors.X_Length ASC", 'one')
+
+        Resonator_Width,Through_Line_Width,Through_Line_CPW_Gap = simulation_parameters 
+        simulation_parameters = Mask_DB.Get_Mask_Data("SELECT Thickness, Dielectric_Constant,Pillar_Height FROM Wafer",'one')
+        Substrate_Thickness,Dielectric_Constant, Substrate_Gap = simulation_parameters
+
+    else:
+        raise RuntimeError('Cannot Generate Simulation_Geometry sting')
+
+    return 'TLW%03dTLG%03dRW%03dSG%02dST%03dE%04d' % (Through_Line_Width, Through_Line_CPW_Gap, Resonator_Width, Substrate_Gap, Substrate_Thickness,Dielectric_Constant*100)  
+
+
+def Get_Simulation_Type(Simulation_Type):
+
+    Simulation_Type_Names = {0:"CouplerSweep",1:"AuxCouplerSweep",2:"PortCalc"}
+    if isinstance(Simulation_Type,int):
+        return  Simulation_Type_Names[Simulation_Type]
+    elif isinstance(Simulation_Type,str):
+        Simulation_Type_Names = dict([[v,k] for k,v in Simulation_Type_Names.items()])
+    else:
+        raise RuntimeError('Unrecognized Simulation Type')
+    
+    return  Simulation_Type_Names[Simulation_Type]
     

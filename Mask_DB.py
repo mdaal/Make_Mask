@@ -281,6 +281,7 @@ def Update_Simulation_Data(Simulation_Geometry, Column_Name, Simulation):
 def Get_Simulation_Data(Simulation_Geometry, Column_Name):
 	"""Return Deserialized date from blob at Column "Column_Name", row "Simulation_Geometry" on table Simulation_Data
 	"""
+
 	if Is_Initialized == 0: 
 		warnings.warn('Attempt to use frunction from ' + __name__ + ' without first initializing BD. Ignoring Attempt....')
 		return
@@ -294,8 +295,8 @@ def Get_Simulation_Data(Simulation_Geometry, Column_Name):
 		Simulation = pickle.loads(str(Simulation[0]))
 	except:
 		#No Data
-		warnings.warn('Attempt to Deserialize data from table Simulation_Data failed. Returning '', instead.  Probablly no data....')
-		Simulation = '' 
+		data_connection.close()
+		raise RuntimeError('Attempt to Deserialize data from table Simulation_Data failed. Probably No Data...')
 	data_connection.close()
 	
 	return Simulation

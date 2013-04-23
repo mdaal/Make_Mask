@@ -7,10 +7,9 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
     ''' This function draws a meandered resonator specified by the arguments and keyword options.
 
 
-    Geometry_Tuple = (Resonator_Width,Resonator_Length,Meander_Pitch,Meander_Zone, Pillar_Diameter,Pillar_Spacing, Pillar_Clearance)
+    Geometry_Tuple = (Resonator_Width,Resonator_Length,Aux_Coupler_Length,Coupler_Length,Meander_Pitch,Meander_Zone,Pillar_Diameter,Pillar_Spacing,Pillar_Clearance,Through_Line_Width )
     
     If Geometry_Tuple is given, then it is used to generate resonator..
-    Geometry_Tuple = (Resonator_Width,Resonator_Length,Meander_Pitch,Meander_Zone, Pillar_Radius = 50.,Pillar_Spacing = 400., Pillar_Clearance = 15) 
 
     If Geometry_Tuple is not given, This function obtains Geometry_Tuple information directly from the Mask_DB
 
@@ -33,7 +32,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
     else:
        Geometry_Tuple = Geometry_Tuple[0]
 
-    print(Geometry_Tuple)
+    
     Resonator_Width,Resonator_Length,Aux_Coupler_Length,Coupler_Length,Meander_Pitch,Meander_Zone,Pillar_Diameter,Pillar_Spacing,Pillar_Clearance,Through_Line_Width = Geometry_Tuple
 
     # if Resonator_Length == None: #Resonator_Length
@@ -217,7 +216,8 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
             str(_meander_straight+2*_turn_outer_radius) + " to reduce empty space in the x-direction")
     
     def draw_coupler_zone_pillars():
-        _x = _pillar_x_index_coupler - float(divmod(_turn_outer_radius,Pillar_Spacing)[0]+1)*Pillar_Spacing # The second term is there to clear the turn area of the resonator
+        #_x = _pillar_x_index_coupler - float(divmod(_turn_outer_radius,Pillar_Spacing)[0]+1)*Pillar_Spacing # The second term is there to clear the turn area of the resonator
+        _x = -(Pillar_Clearance + Pillar_Radius)-Pillar_Spacing
         _y = -abs(_pillar_y_index)
         _r = Pillar_Radius
         _x_min = coupler_trace.x - Pillar_Radius - Pillar_Clearance #This is for drawing a left most column of pillars so that resonator cell is bordered on all 4 sides by pillars
@@ -232,18 +232,18 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
             while _x >= -(Coupler_Length+Through_Line_Width):
                 resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
                 _x -= Pillar_Spacing
-        elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y > aux_coupler_trace.y):#note that aux_coupler_trace may not be defined
+        elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y > aux_coupler_trace.y- Pillar_Radius - Pillar_Clearance):#note that aux_coupler_trace may not be defined
             #print("cond 3, _y = %f" % _y)
             _x_min = _x_min - Through_Line_Width
             while _x >= -(Coupler_Length-Pillar_Clearance):
                 resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
                 _x -= Pillar_Spacing
-        elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y < aux_coupler_trace.y):
+        elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y < aux_coupler_trace.y- Pillar_Radius - Pillar_Clearance):
             #print("cond 4, _y = %f" % _y)
             _x_min = _x_min - Through_Line_Width
             while _x >= -(Coupler_Length+Through_Line_Width):
                 resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
-                _x -= Pillar_Spacing
+                _x -= 2*Pillar_Spacing
         else:
             print('encountered unknown pillar zone pillar drawn condition')
 
@@ -353,7 +353,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
     resonator_cell.add(gdspy.Round(Pillar_Layer,(Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,_pillar_y_index),Pillar_Radius))
          
     #Add Resonator Label
-    resonator_cell.add(gdspy.Text(Resonator_Trace_Layer, Resonator_Name, 2*Pillar_Radius, (-Pillar_Spacing/2,-Pillar_Radius)))  
+    resonator_cell.add(gdspy.Text(Resonator_Trace_Layer, Resonator_Name, 3*Pillar_Radius, (-Pillar_Spacing/2,Pillar_Radius+5))) # -Pillar_Radius/2
     
     #The total y distance traverse by resonator and pillars. measured from top pillar center to bottom pillar center
     total_y_distance = min(_pillar_y_index, trace.y)

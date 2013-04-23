@@ -18,7 +18,7 @@ Aux_Coupler_Length = 1000.0
 Through_Line_Width = 360 
 Coupler_Length = 1000.0 
 
-Geometry_Tuple = (Resonator_Width,Resonator_Length,Aux_Coupler_Length,Coupler_Length,Meander_Pitch,Meander_Zone,Pillar_Diameter,Pillar_Grid_Spacing,Pillar_Clearance,Through_Line_Width )
+Geometry_Tuple = (Resonator_Width,Resonator_Length,Aux_Coupler_Length,Coupler_Length,Meander_Pitch,Meander_Zone,Pillar_Diameter,Pillar_Spacing,Pillar_Clearance,Through_Line_Width )
 ##Clear cell_dict to avoid naming conflict
 gdspy.Cell.cell_dict = {}
 
@@ -26,10 +26,12 @@ Res_Name = 'My_Resonator'
 #resonator_cell 
 
 #to use the geometry from Geometry_Tuple
-Res_Tuple,_y_initial= Draw_Resonator.Draw_Resonator(Res_Name,1,1,2,True, True,False,Geometry_Tuple)
+#Res_Tuple,_y_initial= Draw_Resonator.Draw_Resonator(Res_Name,1,1,2,True, True,False,Geometry_Tuple)
 
 #to use the geometry from Resonator_ID = 1 in Mask_DB.. 
 #Res_Tuple= Draw_Resonator(Resonator_Name=Res_Name,Resonator_ID=1, Resonator_Trace_Layer = 1, Pillar_Layer = 2, Y_Pitch_Tight = False, X_Pitch_Tight = False,Update_DB = True)
+#use Res 9 for pad over lap and Res16 for piller intersecting bend
+Res_Tuple,_y_initial = Draw_Resonator.Draw_Resonator(Res_Name,16, Resonator_Trace_Layer = 1, Pillar_Layer = 2, Y_Pitch_Tight = True, X_Pitch_Tight = True,Update_DB = False)
 
 my_res_cell = gdspy.Cell('My_Resonator')
 my_res_cell.add(gdspy.CellReference(Res_Tuple))

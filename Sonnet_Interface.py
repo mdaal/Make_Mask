@@ -4,6 +4,7 @@ import os
 import warnings
 import sys
 import time
+import tarfile
 
 import paramiko
 import getpass
@@ -12,9 +13,13 @@ import getpass
 mysys = platform.system()
 print('System is %s' % (mysys))
 
-#load hostname, username, port, etc.
+##############load hostname, username, port, etc.
 execfile('Remote_Access.txt')
-
+# remote access file must have these three lines
+# hostname = _________
+# username = _________
+# port     = _________  #this is the SSH port, usually 22
+##############
 
 privatekeyfile = os.path.expanduser('~/.ssh/id_rsa')
 
@@ -74,6 +79,12 @@ def mycall(command_list, Sonnet_Path, File_Name, Terminal_Output = False):
 		#ssh.connect(username=username, password=password)
 		ssh.connect(hostname, username = username)
 
+		##Appempt to keep connection open
+		transport = ssh.get_transport()
+		transport.set_keepalive(60*60) #Send "Keepalive" packer every hour to keep connection open  
+		#NOTE: Keepalive packets are ignored by the server. They are only for keeping network connections from timing out
+		##
+
 		ssh.exec_command('mkdir ' + Sonnet_Path)
 
 		cmd = ''
@@ -81,9 +92,16 @@ def mycall(command_list, Sonnet_Path, File_Name, Terminal_Output = False):
 			cmd = cmd + word + ' '
 		cmd = cmd.rstrip()
 
-		chan  = ssh.exec_command(cmd)
+		chan  = ssh.exec_command(cmd) # Execute Sonnet Calculation
 
-		output_message = chan[1].read()
+		output_message = chan[1].read() #NOTE: if you try to read channel 2 (the error channel) the calculate will hang for some reason. Maybe there is a timeout? dont do chan[2].read()
+
+		# if 0: # If set to 0 this function returns the contents of 'log_response.log' as a string, if set to 0, this function copies output directory on to local system and return directory path
+
+		# 	output_message = chan[1].read()
+		# else: 
+		# 	copy_from_remote(Sonnet_Path,File_Name,ssh) # Copy directory with sonnet output files to local computer
+		# 	output_message = Sonnet_Path+File_Name #thus, this fuction returns the directory path with the sonnet output files
 
 		ssh.close()	
 
@@ -117,6 +135,64 @@ def Copy_To_Remote(Sonnet_Path,File_Name):
 	else: 
 		pass
 
+def Copy_From_Remote(Sonnet_Path,File_Name):
+	if mysys.startswith('Darwin'):
+		""" This funtion makes a .tar.gz file of the output director of the Sonnet simulation and then transfers the .tar.gz file this local computer and finally untars it""" 
+		ssh = paramiko.SSHClient()
+		ssh.load_system_host_keys()
+		#Assuming that a Host key exists!
+		#ssh.connect(username=username, password=password)
+		ssh.connect(hostname, username = username)
+
+		# tar_file = Sonnet_Path + File_Name + '.tar.gz'
+
+		# chan = ssh.exec_command('tar cvzf ' + tar_file + ' ' + Sonnet_Path + File_Name + os.sep) # this tars the enitre director path e.g.
+		# #Sonnet_Files/20130408/CouplerSweep_TLW395TLG000RW256SG03ST500E1120_20130408_122907.tar.gz is tarred
+		# #not just CouplerSweep_TLW395TLG000RW256SG03ST500E1120_20130408_122907.tar.gz
+
+		# output_message = chan[1].read() # raw string. read with raw_input()
+
+		# sftp = ssh.open_sftp()
+
+		# sftp.get(tar_file,tar_file)
+
+		# tar = tarfile.open(tar_file)
+		# tar.extractall(path='.', members=None)
+
+		# sftp.close()
+
+		output_message = copy_from_remote(Sonnet_Path,File_Name,ssh)
+
+		ssh.close()
+
+		return output_message
+	else: 
+		pass
+
+def copy_from_remote(Sonnet_Path,File_Name,SSHClient):
+	""" SSHClient must be open """
+
+	ssh = SSHClient
+	#note: can see if ssh is active by seeing is underlying transport is active: T = ssh.get_transport(), T.is_active()
+	tar_file = Sonnet_Path + File_Name + '.tar.gz'
+
+	chan = ssh.exec_command('tar cvzf ' + tar_file + ' ' + Sonnet_Path + File_Name + os.sep) # this tars the enitre director path e.g.
+	#Sonnet_Files/20130408/CouplerSweep_TLW395TLG000RW256SG03ST500E1120_20130408_122907.tar.gz is tarred
+	#not just CouplerSweep_TLW395TLG000RW256SG03ST500E1120_20130408_122907.tar.gz
+
+	output_message = chan[1].read() # raw string. read with raw_input()
+
+	sftp = ssh.open_sftp()
+
+	sftp.get(tar_file,tar_file)
+
+	tar = tarfile.open(tar_file)
+	tar.extractall(path='.', members=None)
+
+	sftp.close()
+	return output_message
+
+
 
 def Run_EM(Sonnet_Path, File_Name):
 
@@ -147,10 +223,20 @@ def Clean_Proj(Sonnet_Path,File_Name):
 	out = mycall(SysCall, Sonnet_Path, File_Name)
 	return out
 
+#Need to implement batch mode processing...
 def Run_EM_nogui(Sonnet_Path,File_Name, Terminal_Output = True):
 	#terminal_output = true means that output is displayed in terminal
 	print("Simulating " + File_Name)
 	Sonnet_File = Sonnet_Path+File_Name+'.son'
 	SysCall=['em',  '-v',  Sonnet_File]
 	out = mycall(SysCall,Sonnet_Path, File_Name, Terminal_Output = Terminal_Output)
+	out = Copy_From_Remote(Sonnet_Path,File_Name)
+	out = Sonnet_Path+File_Name
 	return out
+
+
+
+
+
+
+
