@@ -14,7 +14,10 @@ mysys = platform.system()
 print('System is %s' % (mysys))
 
 ##############load hostname, username, port, etc.
-execfile('Remote_Access.txt')
+try:
+	execfile('Remote_Access.txt')
+except:
+	print('Remote_Access.txt not found. Either create this file or manually supply credentials every time a conntections to remote Sonnet host is needed.')
 # remote access file must have these three lines
 # hostname = _________
 # username = _________
