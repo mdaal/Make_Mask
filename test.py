@@ -540,6 +540,45 @@ if 0:
 
 
 if 0:
+	#plot mask polygons...
+	import gdspy
+	#cl= gdspy.CellReference("_DS_1020500_", origin=(0, 0), rotation=None, magnification=None, x_reflection=False)
+	#pgs = cl.get_polygons(by_layer=False, depth=None)
+
+	pgs = vars()['pgs']
+
+	import numpy as np
+	import matplotlib
+	from matplotlib.patches import Polygon
+	from matplotlib.collections import PatchCollection
+	import matplotlib.pyplot as plt
+
+
+	fig=plt.figure()
+	ax=fig.add_subplot(111)
+
+
+	patches = []
+
+
+	for j in pgs:
+	    polygon = Polygon(j, False)
+	    patches.append(polygon)
+
+	colors = 100*np.random.rand(len(patches))
+	p = PatchCollection(patches, cmap=matplotlib.cm.jet, alpha=0.4)
+	p.set_array(np.array(colors))
+	ax.add_collection(p)
+	plt.colorbar(p)
+	#ax.autoscale_view()
+	plt.axis('image')
+	#plt.axis('equal')
+
+	plt.show()
+
+
+
+if 0: #use this to generate Mask_Parameters.csv file
 
 	cmd = """SELECT Computed_Parameters.resonator_id,Computed_Parameters.sensor_id,Resonators.Design_Freq,Resonators.Width,Computed_Parameters.Design_Q,Computed_Parameters.Coupler_Zone,Sensors.Through_Line_Width, 
 	Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
@@ -547,18 +586,32 @@ if 0:
 	Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
 	Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
 
+	if 0:
+		records = Mask_DB.Get_Mask_Data(cmd)
+		f = open('Mask_Parameters.csv', mode = 'w')
+		f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad],\n"))
 
-	records = Mask_DB.Get_Mask_Data(cmd)
-	f = open('Mask_Parameters.csv', mode = 'w')
-	f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad],\n"))
+		for rec in records:
+			f.write(unicode(str(rec).lstrip('(').rstrip(')')+',\n'))
 
-	for rec in records:
-		f.write(unicode(str(rec).lstrip('(').rstrip(')')+',\n'))
+		#probably want to remove final ',\n' manually
+		f.close()
 
-	#probably want to remove final ',\n' manually
-	f.close()
+	if 1:
+		Mask_Folder = 'Mask_Files'
+		records = Mask_DB.Get_Mask_Data(cmd)
+		f = open(Mask_Folder + os.sep + 'Mask_Parameters.csv', mode = 'w')
+		f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad]\n"))
 
-if 0:
+		data = ''
+		for rec in records:
+			data = data + unicode(str(rec).lstrip('(').rstrip(')')+'\n')
+
+		f.write(data)
+		#probably want to remove final ',\n' manually
+		f.close()
+
+if 1:
 	#############
 	# Run This to generate Mask
 	#############
@@ -586,10 +639,12 @@ if 0:
 
 	Folder = 'Mask_Files'
 	#Folder = 'Mask_Test_2'
-	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db") #why not :memory:??
+	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db", Rebuild_DB = True) #why not :memory:??
 	Make_Mask.Execute_Coupler_Simulations()
 	Make_Mask.Compute_All_Mask_Parameters()
-	Draw_Mask.Draw_Mask(Folder)
+	Make_Mask.Output_Parameters()
+	Make_Mask.Draw_Mask()
+
 	#print(10*'\a')
 
 

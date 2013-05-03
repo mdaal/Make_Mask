@@ -35,7 +35,8 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	sensor_cell = gdspy.Cell(sensor_cell_name,exclude_from_global=True)
 
 
-
+	
+	
 	# We draw the cut lines by boolean operation on two squares defining the die outline
 	poly1 = gdspy.Rectangle(Resonator_Trace_Layer, (0, 0), (X_Length, Y_Length))
 	poly2 = gdspy.Rectangle(Resonator_Trace_Layer, (Cut_Line_Width, Cut_Line_Width), (X_Length-Cut_Line_Width, Y_Length-Cut_Line_Width))
@@ -43,10 +44,14 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	subtraction = lambda p1, p2: p2 and not p1
 	sensor_cell.add(gdspy.boolean(Resonator_Trace_Layer, primitives, subtraction, max_points=199))
 
+	#Bare sensor cell is sensor cell without text and cutlines
+	bare_sensor_cell_name = 'BARE_'+sensor_cell_name
+	bare_sensor_cell = gdspy.Cell(bare_sensor_cell_name,exclude_from_global=False)
+
 	#Add the name of the sensor in the lower left of the die
 	Text_Offset = 100
-
 	sensor_cell.add(gdspy.Text(Resonator_Trace_Layer, 'S' + str(Sensor_Number), 300, (Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset)))
+
 	#Draw Throughline
 	#assuming L shape
  	Though_Line_Trace = gdspy.Path(Through_Line_Width, (X_Length/2, 0))
@@ -62,7 +67,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	Though_Line_Trace.turn(Through_Line_Layer, Through_Line_Turn_Radius, 'l')
 	Though_Line_Trace.segment(Through_Line_Layer, Through_Line_Edge_Offset + Through_Line_Width/2 - Through_Line_Turn_Radius, '+y')
 
-	sensor_cell.add(Though_Line_Trace)
+	bare_sensor_cell.add(Though_Line_Trace)
 
 	#This is a test rectange to check the through line placement
 	#sensor_cell.add(gdspy.Rectangle(Resonator_Trace_Layer, (Through_Line_Edge_Offset, Through_Line_Edge_Offset), (Through_Line_Edge_Offset+Through_Line_Width/2 + Through_Line_Turn_Radius, Through_Line_Edge_Offset+Through_Line_Width/2 + Through_Line_Turn_Radius)))
@@ -100,7 +105,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 		_cur_Res_x_pos = Coupler_Zone + _res_x_zero
 		_cur_Res_y_pos += -Head_Space-_y_initial
 		_curr_Res_ref =  gdspy.CellReference(resonator_cell, (_cur_Res_x_pos, _cur_Res_y_pos))
-		sensor_cell.add(_curr_Res_ref)
+		bare_sensor_cell.add(_curr_Res_ref)
 		_bounding_box_edges = resonator_cell.get_bounding_box() + np.array([[_cur_Res_x_pos, _cur_Res_y_pos],[_cur_Res_x_pos, _cur_Res_y_pos]])
 		#sensor_cell.add(  gdspy.Rectangle(Through_Line_Layer, (_bounding_box_edges[0][0], _bounding_box_edges[0][1]), (_bounding_box_edges[1][0], _bounding_box_edges[1][1])))
 
@@ -114,7 +119,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 		while _pillar_y_index >= _cur_Res_y_pos:
 			while _pillar_x_index <= X_Length - Pillar_Radius:
 				if not in_rectangle((_pillar_x_index, _pillar_y_index),_bounding_box_edges,Pillar_Radius):#Pillar_Radius+Pillar_Grid_Spacing):
-					sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
+					bare_sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
 				_pillar_x_index += Pillar_Grid_Spacing
 			_pillar_x_index = (Pillar_Grid_Spacing+Pillar_Diameter)/2
 			_pillar_y_index -= Pillar_Grid_Spacing
@@ -123,13 +128,15 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	
 	while _pillar_y_index >= Pillar_Radius:
 		while _pillar_x_index <= X_Length - Pillar_Radius:
-			sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
+			bare_sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
 			_pillar_x_index += Pillar_Grid_Spacing
 		_pillar_x_index = (Pillar_Grid_Spacing+Pillar_Diameter)/2
 		_pillar_y_index -= Pillar_Grid_Spacing
 	
-	
-	Sensor_Dict = {"Through_Line_Metal_Area":Though_Line_Trace.area(),"Through_Line_Length":Though_Line_Trace.length, "Sensor_Pillar_Area": sensor_cell.area(by_layer=True)[Pillar_Layer], "sensor_id":Sensor_Number}
+	bare_sensor_cell_ref =  gdspy.CellReference(bare_sensor_cell, (0,0))
+	sensor_cell.add(bare_sensor_cell_ref)	
+
+	Sensor_Dict = {"Through_Line_Metal_Area":Though_Line_Trace.area(),"Through_Line_Length":Though_Line_Trace.length, "Sensor_Pillar_Area": sensor_cell.area(by_layer=True)[Pillar_Layer], "sensor_id":Sensor_Number, "Sensor_Cell_Name":'"'+bare_sensor_cell_name+'"'}
 	for ID in Res_IDs:
 		resonator_id = ID[0]
 		Mask_DB.Update_Computed_Parameters(resonator_id, Sensor_Dict)

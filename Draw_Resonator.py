@@ -139,7 +139,8 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
         _pillar_y_Spacing =  _fold_bundle_size*(meander_radius*2) + 2*Pillar_Clearance+ Resonator_Width+ Pillar_Radius*2
      
     #Initialize GDS cell
-    resonator_cell = gdspy.Cell(Resonator_Name,exclude_from_global=True)
+    resonator_cell_name = 'RESONATOR_'+str(Resonator_ID)
+    resonator_cell = gdspy.Cell(resonator_cell_name,exclude_from_global=False)
     
     #initialize Resonator trace object
     _y_initial = -(Pillar_Clearance+Pillar_Radius+Resonator_Width/2)
@@ -367,8 +368,8 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
     _meander_length = _y_initial - trace.y + Resonator_Width
 
     resonator_cell.add(trace)
-    Res_Dict = {"Meander_Pitch": Meander_Pitch,"Meander_Zone":_new_meander_zone,"Meander_Length":_meander_length, "Resonator_Metal_Area":trace.area(),"Patch_Area":_meander_length*_new_meander_zone,"Turn_Extension":_turn_extension,"Rungs":rung_count}
-
+    Res_Dict = {"Meander_Pitch": Meander_Pitch,"Meander_Zone":_new_meander_zone,"Meander_Length":_meander_length, "Resonator_Metal_Area":trace.area(),"Patch_Area":_meander_length*_new_meander_zone,"Turn_Extension":_turn_extension,"Rungs":rung_count, "Resonator_Cell_Name":'"'+resonator_cell_name+'"'}
+    
     if Update_DB == True:
         Mask_DB.Update_Computed_Parameters(Resonator_ID, Res_Dict)
     

@@ -4,7 +4,7 @@ import gdspy
 import os
 import Mask_DB
 
-def Draw_Mask(Save_Path, Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pillar_Layer = 3):
+def Draw_Mask(Save_Path = '.', Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pillar_Layer = 3):
 	
 	#For Test Only! Remove when deployed
 	gdspy.Cell.cell_dict = {}
@@ -134,17 +134,18 @@ def Draw_Mask(Save_Path, Through_Line_Layer = 1, Resonator_Trace_Layer = 2, Pill
 
 	mask_cell.add(align_cell_ref)
 	align_cell_ref = gdspy.CellArray(align_cell2, 2, 2, [align_mark_x_separation+align_mark_set_separation,align_mark_y_separation], origin=(-(align_mark_x_separation+align_mark_set_separation)/2, -align_mark_y_separation/2), rotation=None, magnification=None, x_reflection=False)
-
 	mask_cell.add(align_cell_ref)
-	mask_cell.flatten()
+
+	
 	name = Save_Path + os.sep + 'mask'
+	mask_cell.flatten()
+
 	#name = os.path.abspath(os.path.dirname(os.sys.argv[0])) + os.sep + 'mask'
 
 	## Output the layout to a GDSII file (default to all created cells).
 	## Set the units we used to micrometers and the precision to nanometers.
 	gdspy.gds_print(name + '.gds', unit=1.0e-6, precision=1.0e-9)
-	print('Sample gds file saved: ' + name + '.gds')
-
+	print('gds file saved: ' + name + '.gds')
 	## Save an image of the boolean cell in a png file.  Resolution refers
 	## to the number of pixels per unit in the layout. Resolution changed from 4
 	## to 1 to avoid  "malloc_error"

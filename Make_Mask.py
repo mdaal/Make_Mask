@@ -7,16 +7,24 @@ import Compute_Parameters
 import SimStruc
 import os
 
-num_simulation = 0
+import gdspy
+import Draw_Mask as D_M
+
+num_simulation = 0 
 
 warnings.filterwarnings('always')
 
-def Make_Mask(Folder_Name,Mask_DB_Name = ":memory:"):
+Mask_Folder = ''
+
+def Make_Mask(Folder_Name,Mask_DB_Name = ":memory:",Rebuild_DB = False):
 
 	global num_simulation
-	num_simulation = Mask_DB.Init_DB(Folder_Name,Mask_DB_Name)
-	return num_simulation
+	num_simulation = Mask_DB.Init_DB(Folder_Name,Mask_DB_Name,Rebuild_DB = Rebuild_DB)
 
+	global Mask_Folder
+	Mask_Folder = Folder_Name
+
+	return num_simulation # #note: this number not to total number of sonnet simulations, its the number of resonator geometeries. for each geometery, CouplerSweep and maybe a AuxCouplerSweep will be needed
 
 def Execute_Coupler_Simulations(Force_Simulation = False):
 	if num_simulation is 0:
@@ -105,7 +113,26 @@ def Manual_Add_Simulation(Sonnet_Path,File_Name,Folder_Name,Mask_DB_Name = ":mem
 		Mask_DB.Update_Simulation_Data(File_Name.split('_')[1], File_Name.split('_')[0], Simulation)
 
 
+def Output_Parameters():
+	'''Write a file Mask_Parameters.csv containing most mask parameters in the Mask_Folder'''
+	cmd = """SELECT Computed_Parameters.resonator_id,Computed_Parameters.sensor_id,Resonators.Design_Freq,Resonators.Width,Computed_Parameters.Design_Q,Computed_Parameters.Coupler_Zone,Sensors.Through_Line_Width, 
+	Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
+	Computed_Parameters.Through_Line_Eeff,Computed_Parameters.Resonator_Length,Computed_Parameters.Meander_Pitch,Computed_Parameters.Meander_Zone,Computed_Parameters.Meander_Length,Computed_Parameters.Through_Line_Length,
+	Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
+	Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
 
+
+	records = Mask_DB.Get_Mask_Data(cmd)
+	f = open(Mask_Folder + os.sep + 'Mask_Parameters.csv', mode = 'w')
+	f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad]\n"))
+
+	data = ''
+	for rec in records:
+		data = data + unicode(str(rec).lstrip('(').rstrip(')')+'\n')
+
+	f.write(data)
+	#probably want to remove final ',\n' manually
+	f.close()
 
 def Qcheck(Design_Q, Design_Freq, Simulation):
 	"""Returns True if Design_Q at Design_Frequency can be attained in simulation """
@@ -115,3 +142,17 @@ def Qcheck(Design_Q, Design_Freq, Simulation):
 		low_enough = False
 
 	return low_enough
+
+def Draw_Mask():
+	D_M.Draw_Mask(Save_Path = Mask_Folder)
+
+
+def View_Mask(Mask_File = ''):
+	if Mask_File == '':
+		Mask_File = Mask_Folder+ os.sep +'mask.gds'
+
+	gdspy.Cell.cell_dict = {}
+	gdsii = gdspy.GdsImport(Mask_File)
+	for cell_name in gdsii.cell_dict:
+		gdsii.extract(cell_name)
+	gdspy.LayoutViewer()
