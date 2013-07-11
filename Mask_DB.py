@@ -132,7 +132,8 @@ def Init_DB(Folder_Name,File_Name = ":memory:",Rebuild_DB = True):
 		sql_cmd = """CREATE TABLE Computed_Parameters (resonator_id INTEGER PRIMARY KEY AUTOINCREMENT, sensor_id INTEGER, Through_Line_Impedance FLOAT, 
 			Resonator_Impedance FLOAT, Coupler_Length FLOAT, Aux_Coupler_Length FLOAT, Resonator_Eeff FLOAT, Through_Line_Eeff FLOAT, Resonator_Length FLOAT, Meander_Pitch FLOAT,  
 			Meander_Zone FLOAT, Meander_Length FLOAT, Through_Line_Length FLOAT, Through_Line_Metal_Area FLOAT, Resonator_Metal_Area FLOAT, 
-			Patch_Area FLOAT,Turn_Extension FLOAT, Rungs FLOAT, Sensor_Pillar_Area FLOAT, Coupler_Zone FLOAT, Design_Q FLOAT, Coupler_Phase_Change FLOAT,Sensor_Cell_Name Text, Resonator_Cell_Name Text)"""
+			Patch_Area FLOAT,Turn_Extension FLOAT, Rungs FLOAT, Sensor_Pillar_Area FLOAT, Coupler_Zone FLOAT, Design_Q FLOAT, Coupler_Phase_Change FLOAT,Max_Current_Length FLOAT,
+			Phase_Midpoint Text, Sensor_Cell_Name Text, Resonator_Cell_Name Text, Sensor_Origin Text, Resonator_Origin Text)"""
 		#Note: Computed Resonator Length has been shortened by presence of coupler. phase change of Coupler has been subtracted from vacuum lenght or resonator.
 		cursor.execute(sql_cmd)
 		cursor.executemany("INSERT INTO Computed_Parameters (resonator_id) VALUES (?)",zip(range(1,num_resonators+1)))

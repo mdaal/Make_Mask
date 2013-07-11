@@ -1,7 +1,7 @@
 import numpy as np
 import gdspy
 import Mask_DB
-import Compute_Parameters
+
 
 def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pillar_Layer = 2, Y_Pitch_Tight = False, X_Pitch_Tight = False,Update_DB = True, *Geometry_Tuple):
     ''' This function draws a meandered resonator specified by the arguments and keyword options.
@@ -35,16 +35,6 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
     
     Resonator_Width,Resonator_Length,Aux_Coupler_Length,Coupler_Length,Meander_Pitch,Meander_Zone,Pillar_Diameter,Pillar_Spacing,Pillar_Clearance,Through_Line_Width = Geometry_Tuple
 
-    # if Resonator_Length == None: #Resonator_Length
-    #    # Resonator_Length = Compute_Parameters.Compute_Length(Resonator_ID)
-
-    # if Aux_Coupler_Length == None or Coupler_Length == None: #Aux_Coupler_Length or Coupler_Length
-    #     pass
-
-
-    # Aux_Coupler_Length = 1000.0 
-    # Through_Line_Width = 360 
-    # Coupler_Length = 1000.0 
 
 
     

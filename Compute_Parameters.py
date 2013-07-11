@@ -1,6 +1,6 @@
 import Mask_DB
 import scipy as sp
-import Draw_Resonator
+#import Draw_Resonator
 import SimStruc
 from scipy import constants
 import warnings
@@ -10,37 +10,37 @@ C = constants.c * pow(10,6) #micrometers per second
 
 warnings.filterwarnings('always')
 
-def Define_Coupler(Resonator_ID):
+# def Define_Coupler(Resonator_ID):
 
-	Draw_Resonator.Draw_Resonator(Resonator_Name='',Resonator_ID=Resonator_ID, Resonator_Trace_Layer = Resonator_Trace_Layer, Pillar_Layer = Pillar_Layer, Y_Pitch_Tight = True, X_Pitch_Tight = True,Update_DB = True)
+# 	Draw_Resonator.Draw_Resonator(Resonator_Name='',Resonator_ID=Resonator_ID, Resonator_Trace_Layer = Resonator_Trace_Layer, Pillar_Layer = Pillar_Layer, Y_Pitch_Tight = True, X_Pitch_Tight = True,Update_DB = True)
 	
-	out = Mask_DB.Get_Mask_Data("SELECT Computed_Parameters.Meander_Zone, Computed_Parameters.Meander_Pitch, Resonators.Width, Resonators.Design_Freq, Resonators.Design_Q,\
-		Sensors.Through_Line_Gap,Sensors.Through_Line_Width,Sensors.Through_Line_Edge_Offset,Sensors.X_Length, Simulation_Names.Simulation_Name FROM Resonators, Sensors, \
-		Simulation_Names, Computed_Parameters WHERE Sensors.sensor_id = Resonators.sensor_id AND Resonators.resonator_id = Computed_Parameters.resonator_id AND \
-		Simulation_Names.simid = Resonators.simid AND Resonators.resonator_id = " + str(Resonator_ID) ,'one')
+# 	out = Mask_DB.Get_Mask_Data("SELECT Computed_Parameters.Meander_Zone, Computed_Parameters.Meander_Pitch, Resonators.Width, Resonators.Design_Freq, Resonators.Design_Q,\
+# 		Sensors.Through_Line_Gap,Sensors.Through_Line_Width,Sensors.Through_Line_Edge_Offset,Sensors.X_Length, Simulation_Names.Simulation_Name FROM Resonators, Sensors, \
+# 		Simulation_Names, Computed_Parameters WHERE Sensors.sensor_id = Resonators.sensor_id AND Resonators.resonator_id = Computed_Parameters.resonator_id AND \
+# 		Simulation_Names.simid = Resonators.simid AND Resonators.resonator_id = " + str(Resonator_ID) ,'one')
 	
-	MZ   = out[0] # um - Actual Meander Zone 
-	MP   = out[1] # um - Actual Meander Pitch
-	RW   = out[2] # um - Resonator Width
-	Freq = out[3]*pow(10,9) # Hz - Resonator Design Freq
-	#Resonator_Length
-	Qc   = out[4]	
-	#Resonator_Eeff
-	#Through_Line_Eeff
-	#Resonator_Impedance
-	#Through_Line_Impedance
-	TLG = out[5] # um - Through Line Gap
-	TLW = out[6] # um - Through Line Width
-	TLE = out[7] # um - Through Line Edge Offset
-	X_Length = out[8] # um - Device X Length
-	Simulation_Name = out[9]
+# 	MZ   = out[0] # um - Actual Meander Zone 
+# 	MP   = out[1] # um - Actual Meander Pitch
+# 	RW   = out[2] # um - Resonator Width
+# 	Freq = out[3]*pow(10,9) # Hz - Resonator Design Freq
+# 	#Resonator_Length
+# 	Qc   = out[4]	
+# 	#Resonator_Eeff
+# 	#Through_Line_Eeff
+# 	#Resonator_Impedance
+# 	#Through_Line_Impedance
+# 	TLG = out[5] # um - Through Line Gap
+# 	TLW = out[6] # um - Through Line Width
+# 	TLE = out[7] # um - Through Line Edge Offset
+# 	X_Length = out[8] # um - Device X Length
+# 	Simulation_Name = out[9]
 
 	 
 
-	#Max_Coupler_Offset = Sim.Pmax
+# 	#Max_Coupler_Offset = Sim.Pmax
 
-	#Dont want resonators to come closer than 1500 um to die edge
-	Max_Coupler_Zone = X_Length - (TLE + TLW + TLG) - (MZ + MP) - 1500 
+# 	#Dont want resonators to come closer than 1500 um to die edge
+# 	Max_Coupler_Zone = X_Length - (TLE + TLW + TLG) - (MZ + MP) - 1500 
 
 	
 def Estimate_Length(Resonator_ID):
@@ -163,10 +163,13 @@ def Compute_Coupler(Resonator_ID):
 	#Note: Computed Resonator Length has been shortened by presence of coupler. phase change of Coupler has been subtracted from vacuum lenght or resonator.
 	Resonator_Length = Resonator_Phase_Length/(2*b)
 
+	#This is the "midpoint", as determined by phase  =  pi, along the resonator length where the current is maximal. NOTE: THis is along the meandered portion of the resonator. The couple has been substracted
+	Max_Current_Length =  sp.around((Resonator_Phase_Length-sp.pi)/(2*b),decimals=3)
+
 	#print(Sim.Current_Attribute,{"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change})
 
 
-	Mask_DB.Update_Computed_Parameters(Resonator_ID, {"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change, "Resonator_Length" : Resonator_Length,"Resonator_Eeff":Resonator_Eeff, "Through_Line_Eeff":Through_Line_Eeff, "Resonator_Impedance":Resonator_Impedance,"Through_Line_Impedance":Through_Line_Impedance} )	
+	Mask_DB.Update_Computed_Parameters(Resonator_ID, {"Coupler_Zone" : Coupler_Zone, "Design_Q" : Design_Q, "Aux_Coupler_Length" : Aux_Coupler_Length, "Coupler_Length" : Coupler_Length, "Coupler_Phase_Change" : Coupler_Phase_Change, "Resonator_Length" : Resonator_Length,"Resonator_Eeff":Resonator_Eeff, "Through_Line_Eeff":Through_Line_Eeff, "Resonator_Impedance":Resonator_Impedance,"Through_Line_Impedance":Through_Line_Impedance,"Max_Current_Length" : Max_Current_Length} )	
 	return (Coupler_Zone,Design_Q,Aux_Coupler_Length,Coupler_Length, sp.rad2deg(Coupler_Phase_Change),Resonator_Length)
 
 	

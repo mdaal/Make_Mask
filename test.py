@@ -1,7 +1,9 @@
-import cPickle as  pickle
-import io
 
 if 0:
+	import cPickle as  pickle
+	import io
+
+
 	dest = open('test.pkl',mode='wb')
 	mypickler = pickle.Pickler(dest,2)
 
@@ -611,7 +613,61 @@ if 0: #use this to generate Mask_Parameters.csv file
 		#probably want to remove final ',\n' manually
 		f.close()
 
-if 1:
+
+if 0:    #print(10*'\a')
+    from matplotlib import cm
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Circle, PathPatch
+    from matplotlib.patches import Polygon
+    from mpl_toolkits.mplot3d import axes3d
+    import mpl_toolkits.mplot3d.art3d as art3d
+
+    pgs_dict = Make_Mask.Get_Polygons('S8')
+
+    fig = plt.figure()
+    ax=fig.gca(projection='3d')
+
+    for layer in pgs_dict.keys():
+        poly_list = pgs_dict[layer]
+        for p in poly_list:
+            polygon = Polygon(p, closed=  False)
+            ax.add_patch(polygon)
+            art3d.pathpatch_2d_to_3d(polygon, z=layer, zdir="z")
+
+
+    ax.set_xlim3d(0, 20000)
+    ax.set_ylim3d(0, 20000)
+    ax.set_zlim3d(0, 3)
+
+    plt.show()
+
+
+
+
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    X, Y, Z = axes3d.get_test_data(0.05)
+    cset = ax.contour(X, Y, Z, extend3d=True, cmap=cm.coolwarm)
+    ax.clabel(cset, fontsize=9, inline=1)
+
+    plt.show()
+
+if 0:
+	from mpl_toolkits.mplot3d import axes3d
+	import matplotlib.pyplot as plt
+	from matplotlib import cm
+
+	fig = plt.figure()
+	ax = fig.gca(projection='3d')
+	X, Y, Z = axes3d.get_test_data(0.01)
+	cset = ax.contour(X, Y, Z, extend3d=True, cmap=cm.coolwarm)
+	ax.clabel(cset, fontsize=9, inline=1)
+
+	plt.show()
+
+
+if 0:
 	#############
 	# Run This to generate Mask
 	#############
@@ -639,12 +695,165 @@ if 1:
 
 	Folder = 'Mask_Files'
 	#Folder = 'Mask_Test_2'
-	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db", Rebuild_DB = True) #why not :memory:??
-	Make_Mask.Execute_Coupler_Simulations()
-	Make_Mask.Compute_All_Mask_Parameters()
-	Make_Mask.Output_Parameters()
+	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db", Rebuild_DB = False) #why not :memory:??
+	#Make_Mask.Execute_Coupler_Simulations()
+	#Make_Mask.Compute_All_Mask_Parameters()
+	#Make_Mask.Output_Parameters()
 	Make_Mask.Draw_Mask()
 
 	#print(10*'\a')
+poly_extremes = {}
 
+prev_x_min  = polygon_list[0][0,0]
+prev_x_max	= polygon_list[0][0,0]
+prev_y_min  = polygon_list[0][0,1]
+prev_y_max  = polygon_list[0][0,1]
+
+
+if 0:
+	for p in xrange(len(polygon_list)):
+		d = {}
+		d['x_min'] = polygon_list[p][:,0].min()
+		d['x_max'] = polygon_list[p][:,0].max()
+		d['y_min'] = polygon_list[p][:,1].min()
+		d['y_max'] = polygon_list[p][:,1].max()
+
+		poly_extremes[p] = d
+
+		if d['x_min'] <= prev_x_min:
+			prev_x_min = d['x_min']
+			poly_extremes['poly_x_min'] = set([p])
+
+		if d['y_min'] <= prev_y_min:
+			prev_y_min = d['y_min']
+			poly_extremes['poly_y_min'] = set([p])
+
+		if d['x_max'] >= prev_x_max:
+			prev_x_max = d['x_max']
+			poly_extremes['poly_x_max'] = set([p])
+
+		if d['y_max'] >= prev_y_max:
+			prev_y_max = d['y_max']
+			poly_extremes['poly_y_max'] = set([p])
+
+	for p in xrange(len(polygon_list)):
+		if poly_extremes[p]['x_min'] == poly_extremes[list(poly_extremes['poly_x_min'])[0]]['x_min']:
+			poly_extremes['poly_x_min'].add(p)
+			poly_extremes['bounding_box_x_min'] = poly_extremes[p]['x_min']
+
+		if poly_extremes[p]['y_min'] == poly_extremes[list(poly_extremes['poly_y_min'])[0]]['y_min']:
+			poly_extremes['poly_y_min'].add(p)
+			poly_extremes['bounding_box_y_min'] = poly_extremes[p]['y_min']
+
+		if poly_extremes[p]['x_max'] == poly_extremes[list(poly_extremes['poly_x_max'])[0]]['x_max']:
+			poly_extremes['poly_x_max'].add(p)
+			poly_extremes['bounding_box_x_max'] = poly_extremes[p]['x_max']
+
+		if poly_extremes[p]['y_max'] == poly_extremes[list(poly_extremes['poly_y_max'])[0]]['y_max']:
+			poly_extremes['poly_y_max'].add(p)
+			poly_extremes['bounding_box_y_max'] = poly_extremes[p]['y_max']
+
+
+if 0:
+	dt = [('x', np.float64), ('y', np.float64)]
+	k = [[8802.5, 18000.0], [9197.5, 18000.0], [9197.5, 17502.5], [8802.5, 17502.5]]
+	g =numpy.array(map(tuple,k),dtype = dt) #i.e. Data must be read in as a list of tuples
+	#is the same as 
+	g = k.view(dt)
+
+
+if 0:
+	poly_extremes = {}
+	start = 1
+
+	prev_x_min  = polygon_list[0][0,0]
+	prev_x_max	= polygon_list[0][0,0]
+	prev_y_min  = polygon_list[0][0,1]
+	prev_y_max  = polygon_list[0][0,1]
+
+	for p in xrange(len(polygon_list)):
+		d = {}
+		d['x_min'] = polygon_list[p][:,0].min()
+		d['x_max'] = polygon_list[p][:,0].max()
+		d['y_min'] = polygon_list[p][:,1].min()
+		d['y_max'] = polygon_list[p][:,1].max()
+
+		poly_extremes[p+start] = d
+
+		if d['x_min'] <= prev_x_min:
+			prev_x_min = d['x_min']
+			poly_extremes['poly_x_min'] = set([p+start]) 
+
+		if d['y_min'] <= prev_y_min:
+			prev_y_min = d['y_min']
+			poly_extremes['poly_y_min'] = set([p+start])
+
+		if d['x_max'] >= prev_x_max:
+			prev_x_max = d['x_max']
+			poly_extremes['poly_x_max'] = set([p+start])
+
+		if d['y_max'] >= prev_y_max:
+			prev_y_max = d['y_max']
+			poly_extremes['poly_y_max'] = set([p+start])
+
+	for p in xrange(len(polygon_list)):
+		if poly_extremes[p+start]['x_min'] == poly_extremes[list(poly_extremes['poly_x_min'])[0]]['x_min']:
+			poly_extremes['poly_x_min'].add(p+start)
+			poly_extremes['bounding_box_x_min'] = poly_extremes[p+start]['x_min']
+
+		if poly_extremes[p+start]['y_min'] == poly_extremes[list(poly_extremes['poly_y_min'])[0]]['y_min']:
+			poly_extremes['poly_y_min'].add(p+start)
+			poly_extremes['bounding_box_y_min'] = poly_extremes[p+start]['y_min']
+
+		if poly_extremes[p+start]['x_max'] == poly_extremes[list(poly_extremes['poly_x_max'])[0]]['x_max']:
+			poly_extremes['poly_x_max'].add(p+start)
+			poly_extremes['bounding_box_x_max'] = poly_extremes[p+start]['x_max']
+
+		if poly_extremes[p+start]['y_max'] == poly_extremes[list(poly_extremes['poly_y_max'])[0]]['y_max']:
+			poly_extremes['poly_y_max'].add(p+start)
+			poly_extremes['bounding_box_y_max'] = poly_extremes[p+start]['y_max']
+
+if 0:  # does not work  because "Point" needs to be a class.
+	import sqlite3
+	
+
+	def adapter_func(obj): 
+	    """Convert from in-memory to storage representation.
+	    """
+	    print 'adapter_func(%s)\n' % obj
+	    return pickle.dumps(str(obj))#, HIGHEST_PROTOCOL)
+
+	def converter_func(data):
+	    """Convert from storage to in-memory representation.
+	    """
+	    print 'converter_func(%r)\n' % data
+	    return pickle.loads(list(data)
+
+
+	# Register the functions for manipulating the type.
+	sqlite3.register_adapter(Point, adapter_func)
+	sqlite3.register_converter("Point", converter_func)
+
+	connection = sqlite3.connect(":memory:",detect_types=sqlite3.PARSE_DECLTYPES) #to try to store sim types
+	#connection = sqlite3.connect(":memory:")
+	cursor = connection.cursor()
+
+	sql_cmd = """CREATE TABLE  Convert_Data (simid INTEGER PRIMARY KEY AUTOINCREMENT, midpoints Point)"""
+	cursor.execute(sql_cmd)
+
+	#Sim = Parse_Sonnet_Response.Parse_Sonnet_Response('log_response.log')
+	#cursor.execute("INSERT INTO  Simulation_Data (simid) VALUES (1)")
+	#cursor.execute('INSERT INTO  Simulation_Data (CouplerSweep) Values :SIM',  {'SIM' : Sim})
+
+	# Create some objects to save.  Use a list of tuples so we can pass
+	# this sequence directly to executemany().
+	to_save = [ [1,3],
+	            [3.2,5.0833],
+	            ]
+	cursor.executemany("INSERT INTO Convert_Data (midpoints) VALUES (?)", to_save)
+
+if 0:
+	#to extract floats from 
+	l = "[1.28573;95853.4]"
+	g = lambda f : [ float(num) for  num in f.replace(' ', '').strip('[').strip(']').split(';')]
 

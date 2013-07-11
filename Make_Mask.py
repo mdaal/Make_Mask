@@ -10,17 +10,30 @@ import os
 import gdspy
 import Draw_Mask as D_M
 
+mask_file_loaded = 0
 num_simulation = 0 
+Through_Line_Layer = 1
+Resonator_Trace_Layer = 2
+Pillar_Layer = 3
 
 warnings.filterwarnings('always')
 
 Mask_Folder = ''
 
-def Make_Mask(Folder_Name,Mask_DB_Name = ":memory:",Rebuild_DB = False):
+def Make_Mask(Folder_Name,Mask_DB_Name = ":memory:", Rebuild_DB = False):
+	'''This function performs necessary initializations for the the module. It must be run first.'''
 
+	#Read Mask Parameters from file
 	global num_simulation
 	num_simulation = Mask_DB.Init_DB(Folder_Name,Mask_DB_Name,Rebuild_DB = Rebuild_DB)
 
+	if Rebuild_DB == True:
+		print('Executing coupler simulatoins (Force_Simulation = False)...')
+		Execute_Coupler_Simulations()
+		print('Computing all mask parameters...')
+		Compute_All_Mask_Parameters()
+
+	#Set Mask folder location global
 	global Mask_Folder
 	Mask_Folder = Folder_Name
 
@@ -119,12 +132,12 @@ def Output_Parameters():
 	Computed_Parameters.Through_Line_Impedance,Computed_Parameters.Resonator_Impedance,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length,Computed_Parameters.Resonator_Eeff,
 	Computed_Parameters.Through_Line_Eeff,Computed_Parameters.Resonator_Length,Computed_Parameters.Meander_Pitch,Computed_Parameters.Meander_Zone,Computed_Parameters.Meander_Length,Computed_Parameters.Through_Line_Length,
 	Computed_Parameters.Through_Line_Metal_Area,Computed_Parameters.Resonator_Metal_Area,Computed_Parameters.Patch_Area,Computed_Parameters.Turn_Extension,Computed_Parameters.Rungs,Computed_Parameters.Sensor_Pillar_Area,
-	Computed_Parameters.Coupler_Phase_Change FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
+	Computed_Parameters.Coupler_Phase_Change, Computed_Parameters.Max_Current_Length FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id"""
 
 
 	records = Mask_DB.Get_Mask_Data(cmd)
 	f = open(Mask_Folder + os.sep + 'Mask_Parameters.csv', mode = 'w')
-	f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad]\n"))
+	f.write(unicode("resonator_id,sensor_id,Design_Freq [GHz],Resonator_Width,Design_Q,Coupler_Zone,Through_Line_Width,Through_Line_Impedance,Resonator_Impedance,Coupler_Length,Aux_Coupler_Length,Resonator_Eeff,Through_Line_Eeff,Resonator_Length,Meander_Pitch,Meander_Zone,Meander_Length,Through_Line_Length,Through_Line_Metal_Area,Resonator_Metal_Area,Resonator_Patch_Area,Turn_Extension,Rungs,Sensor_Pillar_Area,Coupler_Phase_Change [rad], Max_Current_Length\n"))
 
 	data = ''
 	for rec in records:
@@ -144,10 +157,39 @@ def Qcheck(Design_Q, Design_Freq, Simulation):
 	return low_enough
 
 def Draw_Mask():
-	D_M.Draw_Mask(Save_Path = Mask_Folder)
+	''' Draws Mask and saves gds file. Displays Mask in  gds viewer. Then writes output cvs file from the computed mask parameters'''
+	D_M.Draw_Mask(Save_Path = Mask_Folder, Through_Line_Layer = Through_Line_Layer , Resonator_Trace_Layer = Resonator_Trace_Layer, Pillar_Layer = Pillar_Layer)
+	print('Writing mask parameters to .csv file.')
+	Output_Parameters()
 
 
-def View_Mask(Mask_File = ''):
+def View_Mask(Structure = '', Mask_File = ''):
+	'''Displays specified cells in the mask file (full path) Mask_File.
+	If Structure = '', displays all cells contained in Mask_Filie
+	if Structure = 'R3', displays only resonator 3, for example
+	if Structure = 'S7', displays only sensor 7, for example
+	if Structure = 'Mask', only displaces the flattened mask cell
+	if Structure = 'Top', displays all top level cells (cells not referenced by any other cells)'''
+
+	gdsii = Load_Mask(Mask_File = '')
+
+	if Structure == '':
+		gdspy.LayoutViewer()
+	elif Structure.startswith('R'): #The Case for Resonators
+		res_id = int(Structure.strip('R'))
+		cell_name = Mask_DB.Get_Mask_Data("Select Resonator_Cell_Name from Computed_Parameters where resonator_id = %i" % (res_id), fetch = 'one')[0]
+		gdspy.LayoutViewer(cells = str(cell_name))
+	elif Structure.startswith('S'): #The Case for Sensors
+		sensor_id = int(Structure.strip('S'))
+		cell_name = Mask_DB.Get_Mask_Data("Select Sensor_Cell_Name from Computed_Parameters where sensor_id = %i" % (sensor_id), fetch = 'one')[0]
+		gdspy.LayoutViewer(cells = str(cell_name))
+	elif Structure == 'Mask':# this is the flattened top cell.
+		gdspy.LayoutViewer(cells = 'Mask')
+	elif Structure == 'Top': # Includes all cess not reference by a any other cells
+		gdspy.LayoutViewer(cells = gdsii.top_level())
+
+def Load_Mask(Mask_File = ''):
+	'''Loads mask into memory'''
 	if Mask_File == '':
 		Mask_File = Mask_Folder+ os.sep +'mask.gds'
 
@@ -155,4 +197,55 @@ def View_Mask(Mask_File = ''):
 	gdsii = gdspy.GdsImport(Mask_File)
 	for cell_name in gdsii.cell_dict:
 		gdsii.extract(cell_name)
-	gdspy.LayoutViewer()
+
+	global mask_file_loaded
+	mask_file_loaded = 1
+
+	return gdsii
+
+
+def Get_Polygons(Structure):
+	'''Returns dictionary of Polygons by layer for the Spefied structure. Structures are Sensors or Resonators for example
+	Structure = 'S1' is Sensor 1
+	Structir = 'R16' is Resonator 16'''
+
+
+	cell_ref = Get_Cell_Reference(Structure)
+	cell_polygons = cell_ref.get_polygons(by_layer=True, depth=None)
+	
+
+	return cell_polygons
+
+def Get_Cell_Reference(Structure, Origin=(0, 0), Rotation=None, Magnification=None, X_reflection=False ):
+	'''Returns a GDSPY cell receference for the Spefied structure. Structures are Sensors or Resonators for example
+	Structure = 'S1' is Sensor 1
+	Structir = 'R16' is Resonator 16'''
+
+	if mask_file_loaded == 0:
+		Load_Mask(Mask_File = '')
+
+	if Structure == '':
+		raise RuntimeError('Must Specify a Structure')
+	elif Structure.startswith('R'): #The Case for Resonators
+		res_id = int(Structure.strip('R'))
+		cell_name = Mask_DB.Get_Mask_Data("Select Resonator_Cell_Name from Computed_Parameters where resonator_id = %i" % (res_id), fetch = 'one')[0]
+		cell_ref = gdspy.CellReference(cell_name, origin=Origin, rotation=Rotation, magnification=Magnification, x_reflection=X_reflection)
+		
+	elif Structure.startswith('S'): #The Case for Sensors
+		sensor_id = int(Structure.strip('S'))
+		cell_name = Mask_DB.Get_Mask_Data("Select Sensor_Cell_Name from Computed_Parameters where sensor_id = %i" % (sensor_id), fetch = 'one')[0]
+		cell_ref = gdspy.CellReference(cell_name, origin=Origin, rotation=Rotation, magnification=Magnification, x_reflection=X_reflection)
+		
+	else:
+		raise RuntimeError('Unrecognized Structure')
+
+	return cell_ref
+
+
+
+
+
+
+
+
+
