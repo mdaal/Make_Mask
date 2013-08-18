@@ -4,13 +4,14 @@ import os
 from datetime import datetime as dt
 
 
-extend_box = {"x_min":1000, "x_max":1000, "y_min":5000, "y_max":1000} #extend simulation box
+extend_box = {"x_min":1000, "x_max":1000, "y_min":1000, "y_max":1000} #extend simulation box
 extend_box.update({"y_min":extend_box["y_max"] ,"y_max":extend_box["y_min"]}) #switch y_max, y_min values because Sonnet switches positive with negative y-axis
 extend_poly = {"x_min":False, "x_max":False, "y_min":True, "y_max":True} #extend polygins which have sides colinear with the box edges if box extened as per extend_box
 internal_port = True
 
+Origin = np.array([0, 18000])
+ref = Make_Mask.Get_Cell_Reference('S8', Origin=tuple(Origin), Rotation=0, Magnification=None, X_reflection=True )
 
-ref = Make_Mask.Get_Cell_Reference('S8', Origin=(0, 18000), Rotation=0, Magnification=None, X_reflection=True )
 polygons = ref.get_polygons(by_layer=True, depth=None)
 
 parameters = Make_Mask.Mask_DB.Get_Mask_Data("SELECT Resonators.Width,Resonators.Coupler_Zone,Sensors.Through_Line_Width,Computed_Parameters.Meander_Pitch,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length, Computed_Parameters.Phase_Midpoint, Computed_Parameters.Sensor_Origin,Computed_Parameters.Resonator_Origin FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id AND Sensors.sensor_id = %i" % (8), fetch = 'one')
@@ -20,9 +21,21 @@ Through_Line_Width = parameters[2]
 Meander_Pitch = parameters[3]
 Coupler_Length = parameters[4]
 Aux_Coupler_Length = parameters[5]
-Phase_Midpoint = parameters[6] #is a string
-Sensor_Origin = parameters[7] #is a string 
-Resonator_Origin = parameters[8] #is a string
+
+#Convert string point values to numpy arrays
+To_Array = lambda f : np.array([float(num) for  num in f.replace(' ', '').strip('[').strip(']').split(';')])
+Phase_Midpoint = To_Array(parameters[6]) 
+Sensor_Origin = To_Array(parameters[7])  
+Resonator_Origin = To_Array(parameters[8]) 
+#pints must now be reflected and shifted to accord with Sonnet's Coordinate system
+
+To_Sonnet_Coordinates = lambda g : Origin + np.array([g[0],-1*g[1]]) 
+
+Midpoint = To_Sonnet_Coordinates(Resonator_Origin+Phase_Midpoint)
+
+
+
+
 
 
 #####################################################################
@@ -83,11 +96,6 @@ def Compute_Poly_Extremes(polygon_list,start):
 			poly_extremes['bounding_box_y_max'] = poly_extremes[p+start]['y_max']
 	return poly_extremes
 #####################################################################
-
-
-
-
-
 
 
 sonnet_path = 'Sonnet_Files'+ os.sep + dt.now().strftime('%Y%m%d') + os.sep
@@ -271,12 +279,14 @@ def find_port_vertex(port_dict,bound):
 			vertices = [l for l in xrange(points_view[direction].size-1) if (points_view[direction][l] ==  points_view[direction][l+1]) and points_view[direction][l] == total_poly_extremes[extreme_bound]]
 
 			if vertices != []:
+
 				#Add vertex to port_dict if a vertex is found
 				#then add port location point along ling between that vertex and the next vertex on the polygon
 				#this dict will be used to define the ports
 				
 				v1 = divmod(vertices[0]+1,points.shape[0])[1] # roll around vertex index if its at the end of the array
-				vertices.append(points[vertices[0]] + points[v1]/2)
+				vertices.append((points[vertices[0]] + points[v1])/2)
+				print(points[vertices[0]],points[v1] )
 				port_dict[poly] = vertices
 				
 				## Here we extend the polygons found above to the edge of the box.
@@ -288,7 +298,7 @@ def find_port_vertex(port_dict,bound):
 
 def find_interal_port_vertex(port_dict):
 	if  internal_port == True:
-		Mid_Point = np.array([float(num) for  num in Phase_Midpoint.replace(' ', '').strip('[').strip(']').split(';')])
+		pass
 
 
 

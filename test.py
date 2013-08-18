@@ -693,9 +693,10 @@ if 0:
 	reload(Draw_Mask)
 
 
-	Folder = 'Mask_Files'
-	#Folder = 'Mask_Test_2'
-	Make_Mask.Make_Mask(Folder,Mask_DB_Name = "Mask_Data.db", Rebuild_DB = False) #why not :memory:??
+
+	
+	Make_Mask.Make_Mask(Folder_Name = 'Mask_Files',Mask_DB_Name = "Mask_Data.db", Rebuild_DB = False) #why not :memory:??
+
 	#Make_Mask.Execute_Coupler_Simulations()
 	#Make_Mask.Compute_All_Mask_Parameters()
 	#Make_Mask.Output_Parameters()

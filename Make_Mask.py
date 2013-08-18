@@ -20,7 +20,7 @@ warnings.filterwarnings('always')
 
 Mask_Folder = ''
 
-def Make_Mask(Folder_Name,Mask_DB_Name = ":memory:", Rebuild_DB = False):
+def Make_Mask(Folder_Name = 'Mask_Files',Mask_DB_Name = ":memory:", Rebuild_DB = False):
 	'''This function performs necessary initializations for the the module. It must be run first.'''
 
 	#Read Mask Parameters from file

@@ -308,8 +308,10 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 
 		_cur_Res_x_pos = Coupler_Zone + _res_x_zero
 		_cur_Res_y_pos += -Head_Space-_y_initial
-		global current_resonator_origin
+		#global current_resonator_origin
 		current_resonator_origin = np.array([_cur_Res_x_pos, _cur_Res_y_pos])
+		resonator_origin = str(current_resonator_origin.tolist()).replace(',',';')
+		Mask_DB.Update_Computed_Parameters(resonator_id, {"Resonator_Origin":'"'+resonator_origin+'"'})
 		_curr_Res_ref =  gdspy.CellReference(resonator_cell, tuple(current_resonator_origin))
 		sensor_cell.add(_curr_Res_ref)
 		
@@ -757,10 +759,10 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	resonator_cell.add(trace)
 	phase_midpoint = str(phase_midpoint).replace(',',';')
 	sensor_origin = str(current_sensor_origin.tolist()).replace(',',';')
-	resonator_origin = str(current_resonator_origin.tolist()).replace(',',';')
+	#resonator_origin = str(current_resonator_origin.tolist()).replace(',',';')
 
 
-	Res_Dict = {"Meander_Pitch": Meander_Pitch,"Meander_Zone":_new_meander_zone,"Meander_Length":_meander_length, "Resonator_Metal_Area":trace.area(),"Patch_Area":_meander_length*_new_meander_zone,"Turn_Extension":_turn_extension,"Rungs":rung_count, "Resonator_Cell_Name":'"'+resonator_cell_name+'"',"Phase_Midpoint": '"'+phase_midpoint+'"', "Sensor_Origin":'"'+sensor_origin+'"', "Resonator_Origin":'"'+resonator_origin+'"'}
+	Res_Dict = {"Meander_Pitch": Meander_Pitch,"Meander_Zone":_new_meander_zone,"Meander_Length":_meander_length, "Resonator_Metal_Area":trace.area(),"Patch_Area":_meander_length*_new_meander_zone,"Turn_Extension":_turn_extension,"Rungs":rung_count, "Resonator_Cell_Name":'"'+resonator_cell_name+'"',"Phase_Midpoint": '"'+phase_midpoint+'"', "Sensor_Origin":'"'+sensor_origin+'"'}
     
 	if Update_DB == True:
 		Mask_DB.Update_Computed_Parameters(Resonator_ID, Res_Dict)
