@@ -77,58 +77,57 @@ def Draw_Mask(Save_Path = '.', Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 			"""cross_line_width is line width of cross
 			cross_width is Overall width and height of cross """
 			P_1 = gdspy.Path(cross_line_width, (-cross_width/2, 0))
-			P_1.segment(Layer,cross_width, '+x')
+			P_1.segment(cross_width, '+x', layer = Layer)
 			P_2 = gdspy.Path(cross_line_width, (0,-cross_width/2))
-			P_2.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			P_2.segment((cross_width/2)-(cross_line_width/2), '+y', layer = Layer)
 			P_3 = gdspy.Path(cross_line_width, (P_2.x,P_2.y+cross_line_width))
-			P_3.segment(Layer,(cross_width/2)-(cross_line_width/2), '+y')
+			P_3.segment((cross_width/2)-(cross_line_width/2), '+y', layer = Layer)
 			return P_1.polygons+P_2.polygons+ P_3.polygons
 
 		def draw_guide_lines(Layer,Line_Width_Start,Length,Steps):
 			polygons = []
 			for i in xrange(1,Steps+1):
-				polygons.append(gdspy.Path(Line_Width_Start*i,(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps),0)).segment(Layer,Length/Steps,'+x').polygons)
+				polygons.append(gdspy.Path(Line_Width_Start*i,(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps),0)).segment(Length/Steps,'+x',layer = Layer).polygons)
 			for i in xrange(1,Steps+1):
-				polygons.append(gdspy.Path(Line_Width_Start*i,(-(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps)),0)).segment(Layer,Length/Steps,'-x').polygons)
+				polygons.append(gdspy.Path(Line_Width_Start*i,(-(Outer_Cross_Width/2 + Inner_Cross_Thickness +(i-1)*(Length/Steps)),0)).segment(Length/Steps,'-x', layer = Layer).polygons)
 			return 	reduce(lambda x, y: x+y,polygons)
 
 		cross_line_width = Inner_Cross_Thickness  #line width of cross
 		cross_width = Outer_Cross_Width - 2*Outer_Cross_Thickness # overall width and height of cross
 
 		i = draw_cross(Inner_Cross_Layer,cross_line_width,cross_width)
-		inner_cross_poly_set = gdspy.PolygonSet(Inner_Cross_Layer,i).rotate(ang, center=(0, 0))
+		inner_cross_poly_set = gdspy.PolygonSet(i, layer =Inner_Cross_Layer ).rotate(ang, center=(0, 0))
 
 		if Outer_Cross_Thickness==0:
 			o = draw_cross(Outer_Cross_Layer,cross_line_width,cross_width)
-			outer_cross_poly_set = gdspy.PolygonSet(Outer_Cross_Layer,o).rotate(ang, center=(0, 0))
+			outer_cross_poly_set = gdspy.PolygonSet(o, layer =Outer_Cross_Layer ).rotate(ang, center=(0, 0))
 		else:
 			o = draw_cross(Outer_Cross_Layer,3*cross_line_width,Outer_Cross_Width)
-			primitives = [gdspy.PolygonSet(0,i),gdspy.PolygonSet(0, o)]
+			primitives = [gdspy.PolygonSet(i, layer = 0),gdspy.PolygonSet( o, layer = 0)]
 			subtraction = lambda p1, p2: p2 and not p1
-			outer_cross_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
+			outer_cross_poly_set = gdspy.boolean( primitives, subtraction, max_points=199,layer =Outer_Cross_Layer).rotate(ang, center=(0, 0))
 		
 		if Outer_Only == True:
-			inner_cross_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199).rotate(ang, center=(0, 0))
-		
+			inner_cross_poly_set = gdspy.boolean( primitives, subtraction, max_points=199,layer =Inner_Cross_Layer ).rotate(ang, center=(0, 0))
 		poly_set_list = [inner_cross_poly_set, outer_cross_poly_set]
 
 		if Guidelines == True:
 			guide_line_length = 5*Outer_Cross_Width
 			num_steps = 3
 			gi = draw_guide_lines(Inner_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
-			inner_guide_line_poly_set = gdspy.PolygonSet(Inner_Cross_Layer, gi)
+			inner_guide_line_poly_set = gdspy.PolygonSet( gi, layer =Inner_Cross_Layer )
 
 			if Outer_Cross_Thickness==0:
 				go = draw_guide_lines(Outer_Cross_Layer,Inner_Cross_Thickness,guide_line_length,num_steps)
-				outer_guide_line_poly_set = gdspy.PolygonSet(Outer_Cross_Layer, go)
+				outer_guide_line_poly_set = gdspy.PolygonSet( go, layer =Outer_Cross_Layer )
 			else:
 				go = draw_guide_lines(Outer_Cross_Layer,2*Outer_Cross_Thickness+Inner_Cross_Thickness ,guide_line_length,num_steps)
-				primitives = [gdspy.PolygonSet(0,gi),gdspy.PolygonSet(0, go)]
+				primitives = [gdspy.PolygonSet(gi, layer = 0),gdspy.PolygonSet( go, layer = 0 )]
 				subtraction = lambda p1, p2: p2 and not p1
-				outer_guide_line_poly_set = gdspy.boolean(Outer_Cross_Layer, primitives, subtraction, max_points=199)
+				outer_guide_line_poly_set = gdspy.boolean(primitives, subtraction, max_points=199, layer =Inner_Cross_Layer )
 			
 			if Outer_Only == True:
-				inner_guide_line_poly_set = gdspy.boolean(Inner_Cross_Layer, primitives, subtraction, max_points=199)
+				inner_guide_line_poly_set = gdspy.boolean(primitives, subtraction, max_points=199, layer =Inner_Cross_Layer )
 
 			poly_set_list.append(inner_guide_line_poly_set)
 			poly_set_list.append(outer_guide_line_poly_set)
@@ -179,8 +178,8 @@ def Draw_Mask(Save_Path = '.', Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	    
 	## View the layout using a GUI.  Full description of the controls can
 	## be found in the online help at http://gdspy.sourceforge.net/
-	gdspy.LayoutViewer(colors=[None] * 64) # for outlined polygons
-	#gdspy.LayoutViewer()
+	#gdspy.LayoutViewer(colors=[None] * 64) # for outlined polygons
+	gdspy.LayoutViewer()
 
 
 	#return Sensor_Nums
@@ -221,13 +220,13 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	
 	
 	# We draw the cut lines by boolean operation on two squares defining the die outline
-	poly1 = gdspy.Rectangle(Resonator_Trace_Layer, current_sensor_origin, current_sensor_origin+ np.array([X_Length, Y_Length]))
-	poly2 = gdspy.Rectangle(Resonator_Trace_Layer, current_sensor_origin + np.array([Cut_Line_Width, Cut_Line_Width]), current_sensor_origin+np.array([X_Length-Cut_Line_Width, Y_Length-Cut_Line_Width]))
+	poly1 = gdspy.Rectangle(current_sensor_origin, current_sensor_origin+ np.array([X_Length, Y_Length]), layer=Resonator_Trace_Layer)
+	poly2 = gdspy.Rectangle(current_sensor_origin + np.array([Cut_Line_Width, Cut_Line_Width]), current_sensor_origin+np.array([X_Length-Cut_Line_Width, Y_Length-Cut_Line_Width]), layer=Resonator_Trace_Layer)
 	#poly1 = gdspy.Rectangle(Resonator_Trace_Layer, (0, 0), (X_Length, Y_Length))
 	#poly2 = gdspy.Rectangle(Resonator_Trace_Layer, (Cut_Line_Width, Cut_Line_Width), (X_Length-Cut_Line_Width, Y_Length-Cut_Line_Width))
 	primitives = [poly2,poly1]
 	subtraction = lambda p1, p2: p2 and not p1
-	mask_cell.add(gdspy.boolean(Resonator_Trace_Layer, primitives, subtraction, max_points=199))
+	mask_cell.add(gdspy.boolean( primitives, subtraction, max_points=199,layer=Resonator_Trace_Layer))
 
 	#
 	#
@@ -249,7 +248,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	#Add the name of the sensor in the lower left of the die
 	Text_Offset = 100
 	#sensor_cell.add(gdspy.Text(Resonator_Trace_Layer, 'S' + str(Sensor_Number), 300, (Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset)))
-	text_cell.add(gdspy.Text(Resonator_Trace_Layer, 'S' + str(Sensor_Number), 300, tuple(current_sensor_origin + np.array([Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset]))))
+	text_cell.add(gdspy.Text('S' + str(Sensor_Number), 300, tuple(current_sensor_origin + np.array([Cut_Line_Width+Text_Offset, Cut_Line_Width+Text_Offset])), layer=Resonator_Trace_Layer))
 	#
 	#
 	#
@@ -259,17 +258,17 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	#Draw Throughline
 	#assuming L shape
  	Though_Line_Trace = gdspy.Path(Through_Line_Width, (X_Length/2, 0))
- 	Though_Line_Trace.segment(Through_Line_Layer, Through_Line_Edge_Offset + Through_Line_Width/2 - Through_Line_Turn_Radius, '+y')
- 	Though_Line_Trace.turn(Through_Line_Layer, Through_Line_Turn_Radius, 'l')
-	Though_Line_Trace.segment(Through_Line_Layer, (X_Length/2)-Through_Line_Edge_Offset-Through_Line_Width/2 - 2*Through_Line_Turn_Radius, '-x')
-	Though_Line_Trace.turn(Through_Line_Layer, Through_Line_Turn_Radius, 'r')
-	Though_Line_Trace.segment(Through_Line_Layer, Y_Length-2*Through_Line_Edge_Offset-Through_Line_Width - 2*Through_Line_Turn_Radius, '+y')
+ 	Though_Line_Trace.segment( Through_Line_Edge_Offset + Through_Line_Width/2 - Through_Line_Turn_Radius, '+y', layer=Through_Line_Layer)
+ 	Though_Line_Trace.turn(Through_Line_Turn_Radius, 'l',layer=Through_Line_Layer)
+	Though_Line_Trace.segment((X_Length/2)-Through_Line_Edge_Offset-Through_Line_Width/2 - 2*Through_Line_Turn_Radius, '-x', layer=Through_Line_Layer)
+	Though_Line_Trace.turn(Through_Line_Turn_Radius, 'r', layer=Through_Line_Layer)
+	Though_Line_Trace.segment(Y_Length-2*Through_Line_Edge_Offset-Through_Line_Width - 2*Through_Line_Turn_Radius, '+y',layer=Through_Line_Layer)
 	_res_x_zero = Though_Line_Trace.x
-	Though_Line_Trace.turn(Through_Line_Layer, Through_Line_Turn_Radius, 'r')
+	Though_Line_Trace.turn( Through_Line_Turn_Radius, 'r',layer=Through_Line_Layer)
 	_res_y_zero = Though_Line_Trace.y	
-	Though_Line_Trace.segment(Through_Line_Layer, (X_Length/2)-Through_Line_Edge_Offset-Through_Line_Width/2 - 2*Through_Line_Turn_Radius, '+x')
-	Though_Line_Trace.turn(Through_Line_Layer, Through_Line_Turn_Radius, 'l')
-	Though_Line_Trace.segment(Through_Line_Layer, Through_Line_Edge_Offset + Through_Line_Width/2 - Through_Line_Turn_Radius, '+y')
+	Though_Line_Trace.segment( (X_Length/2)-Through_Line_Edge_Offset-Through_Line_Width/2 - 2*Through_Line_Turn_Radius, '+x',layer=Through_Line_Layer)
+	Though_Line_Trace.turn( Through_Line_Turn_Radius, 'l',layer=Through_Line_Layer)
+	Though_Line_Trace.segment(Through_Line_Edge_Offset + Through_Line_Width/2 - Through_Line_Turn_Radius, '+y',layer=Through_Line_Layer)
 
 	sensor_cell.add(Though_Line_Trace)
 
@@ -317,7 +316,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 		
 		#add resonator label text
 		text_location = current_sensor_origin + current_resonator_origin + resonator_label_location 
-		text_cell.add(gdspy.Text(Resonator_Trace_Layer, Resonator_Name, 3*Pillar_Radius, tuple(text_location)))
+		text_cell.add(gdspy.Text( Resonator_Name, 3*Pillar_Radius, tuple(text_location), layer=Resonator_Trace_Layer))
 
 		_bounding_box_edges = resonator_cell.get_bounding_box() + np.array([[_cur_Res_x_pos, _cur_Res_y_pos],[_cur_Res_x_pos, _cur_Res_y_pos]])
 		_total_y_distance = _bounding_box_edges[1][1] - _bounding_box_edges[0][1]
@@ -326,7 +325,7 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 		while _pillar_y_index >= _cur_Res_y_pos:
 			while _pillar_x_index <= X_Length - Pillar_Radius:
 				if not in_rectangle((_pillar_x_index, _pillar_y_index),_bounding_box_edges,Pillar_Radius):#Pillar_Radius+Pillar_Grid_Spacing):
-					sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
+					sensor_cell.add(gdspy.Round((_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60, layer=Pillar_Layer))
 				_pillar_x_index += Pillar_Grid_Spacing
 			_pillar_x_index = (Pillar_Grid_Spacing+Pillar_Diameter)/2
 			_pillar_y_index -= Pillar_Grid_Spacing
@@ -335,15 +334,14 @@ def Draw_Sensor(Sensor_Number, Through_Line_Layer = 1, Resonator_Trace_Layer = 2
 	
 	while _pillar_y_index >= Pillar_Radius:
 		while _pillar_x_index <= X_Length - Pillar_Radius:
-			sensor_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60))
+			sensor_cell.add(gdspy.Round((_pillar_x_index, _pillar_y_index), Pillar_Radius,number_of_points=60, layer=Pillar_Layer))
 			_pillar_x_index += Pillar_Grid_Spacing
 		_pillar_x_index = (Pillar_Grid_Spacing+Pillar_Diameter)/2
 		_pillar_y_index -= Pillar_Grid_Spacing
 	
 	#bare_sensor_cell_ref =  gdspy.CellReference(bare_sensor_cell, (0,0))
 	#sensor_cell.add(bare_sensor_cell_ref)	
-
-	Sensor_Dict = {"Through_Line_Metal_Area":Though_Line_Trace.area(),"Through_Line_Length":Though_Line_Trace.length, "Sensor_Pillar_Area": sensor_cell.area(by_layer=True)[Pillar_Layer], "sensor_id":Sensor_Number, "Sensor_Cell_Name":'"'+sensor_cell_name+'"' }
+	Sensor_Dict = {"Through_Line_Metal_Area":Though_Line_Trace.area(),"Through_Line_Length":Though_Line_Trace.length, "Sensor_Pillar_Area": sensor_cell.area(by_spec=True)[(Pillar_Layer,0)], "sensor_id":Sensor_Number, "Sensor_Cell_Name":'"'+sensor_cell_name+'"' }
 	for ID in Res_IDs:
 		resonator_id = ID[0]
 		Mask_DB.Update_Computed_Parameters(resonator_id, Sensor_Dict)
@@ -505,7 +503,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	#########################
 	#Coupler_Length = 1000.0
 	coupler_trace = gdspy.Path(Resonator_Width, resonator_start_point)
-	coupler_trace.segment(Resonator_Trace_Layer, Coupler_Length, '-x')
+	coupler_trace.segment( Coupler_Length, '-x', layer=Resonator_Trace_Layer)
 	resonator_cell.add(coupler_trace)
 
 	#Aux_Coupler_Length = 1000.0
@@ -516,7 +514,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	    aux_coupler_start_point = (coupler_trace.x- 0.5*Through_Line_Width, coupler_trace.y+0.5*Resonator_Width)
 
 	    aux_coupler_trace = gdspy.Path(Through_Line_Width, aux_coupler_start_point)
-	    aux_coupler_trace.segment(Resonator_Trace_Layer,Aux_Coupler_Length,'-y')
+	    aux_coupler_trace.segment(Aux_Coupler_Length,'-y', layer=Resonator_Trace_Layer)
 	    resonator_cell.add(aux_coupler_trace)
 	#########################
 
@@ -529,7 +527,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	#add small section to trace to compensate for x distance of 180 degree turn
 	_turn_outer_radius = Resonator_Width/2 + meander_radius
 	if Resonator_Width + meander_radius  < Resonator_Length:
-	    trace.segment(Resonator_Trace_Layer, _turn_outer_radius, '+x')
+	    trace.segment(_turn_outer_radius, '+x', layer=Resonator_Trace_Layer)
 	    
 
 	       
@@ -578,32 +576,32 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	    if (Aux_Coupler_Length == 0.0):
 	        #print("cond 1")
 	        while _x >= -Coupler_Length:
-	            resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
+	            resonator_cell.add(gdspy.Round( (_x, _y), _r, layer= Pillar_Layer))
 	            _x -= Pillar_Spacing
 	    elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length <= Resonator_Width) or (_fold_bundle_num ==0):# note condition _fold_bundle_num ==0 so that top row of pillars is drawn on top of Aux coupler no matter what
 	        #print("cond 2")
 	        _x_min = _x_min - Through_Line_Width
 	        while _x >= -(Coupler_Length+Through_Line_Width):
-	            resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
+	            resonator_cell.add(gdspy.Round((_x, _y), _r, layer= Pillar_Layer))
 	            _x -= Pillar_Spacing
 	    elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y > aux_coupler_trace.y- Pillar_Radius - Pillar_Clearance):#note that aux_coupler_trace may not be defined
 	        #print("cond 3, _y = %f" % _y)
 	        _x_min = _x_min - Through_Line_Width
 	        while _x >= -(Coupler_Length-Pillar_Clearance):
-	            resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
+	            resonator_cell.add(gdspy.Round((_x, _y), _r, layer= Pillar_Layer))
 	            _x -= Pillar_Spacing
 	    elif (Aux_Coupler_Length != 0.0) and (Aux_Coupler_Length >= Resonator_Width) and (_y < aux_coupler_trace.y- Pillar_Radius - Pillar_Clearance):
 	        #print("cond 4, _y = %f" % _y)
 	        _x_min = _x_min - Through_Line_Width
 	        while _x >= -(Coupler_Length+Through_Line_Width):
-	            resonator_cell.add(gdspy.Round(Pillar_Layer, (_x, _y), _r))
+	            resonator_cell.add(gdspy.Round((_x, _y), _r, layer= Pillar_Layer))
 	            _x -= 2*Pillar_Spacing
 	    else:
 	        print('encountered unknown pillar zone pillar drawn condition')
 
 		_x += Pillar_Spacing
 		if (_x - _x_min) > _r*2: # dont draw if pillars intersect
-			resonator_cell.add(gdspy.Round(Pillar_Layer, (_x_min, _y), _r))
+			resonator_cell.add(gdspy.Round((_x_min, _y), _r, layer= Pillar_Layer))
 
 	rung_count = 0
 	phase_midpoint = '[0,0]'
@@ -618,7 +616,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 				phase_midpoint = [trace.x,trace.y]
 				partial_segment(Resonator_Trace_Layer, trace, _meander_straight - dif + trace.length , _segment_direction[_fold_num%2])
 			else:
-				trace.segment(Resonator_Trace_Layer,_meander_straight , _segment_direction[_fold_num%2])
+				trace.segment(_meander_straight , _segment_direction[_fold_num%2], layer=Resonator_Trace_Layer)
 			rung_count = rung_count + 1		
 		elif _break_after_pillars is not 1:
 			partial_segment(Resonator_Trace_Layer, trace, Resonator_Length, _segment_direction[_fold_num%2])
@@ -634,16 +632,16 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 				draw_coupler_zone_pillars() #must be called before _fold_bundle_num is incremented
 
 				while _pillar_index*Pillar_Spacing <= _pillar_straight:
-					resonator_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, -_pillar_y_index), Pillar_Radius))
+					resonator_cell.add(gdspy.Round( (_pillar_x_index, -_pillar_y_index), Pillar_Radius, layer= Pillar_Layer))
 					_pillar_x_index += ((-1)**(_fold_bundle_num))*Pillar_Spacing  
 					_pillar_index+=1           
 				_pillar_x_index += ((-1)**(_fold_bundle_num))*(-Pillar_Spacing)
 				_fold_bundle_num += 1
 				#Add a Pillar on left of resonator meander
-				resonator_cell.add(gdspy.Round(Pillar_Layer,( -(Pillar_Clearance + Pillar_Radius),-_pillar_y_index),Pillar_Radius))
+				resonator_cell.add(gdspy.Round(( -(Pillar_Clearance + Pillar_Radius),-_pillar_y_index),Pillar_Radius, layer= Pillar_Layer))
 
 				#Add a Pillar on right of resonator meander
-				resonator_cell.add(gdspy.Round(Pillar_Layer,(Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,-_pillar_y_index),Pillar_Radius))
+				resonator_cell.add(gdspy.Round((Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,-_pillar_y_index),Pillar_Radius, layer= Pillar_Layer))
 				_pillar_index = 0
 				_pillar_y_index+=_pillar_y_Spacing
 			else: #This is the case where multiple rows of pillar fit between resonator rungs (within the meander pitch)
@@ -654,16 +652,16 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 					draw_coupler_zone_pillars() #must be called before _fold_bundle_num is incremented
 
 					while _pillar_index*Pillar_Spacing <= _pillar_straight:                        
-						resonator_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius))
+						resonator_cell.add(gdspy.Round((_pillar_x_index, _pillar_y_index), Pillar_Radius,layer= Pillar_Layer))
 						_pillar_x_index += ((-1)**(_fold_bundle_num))*Pillar_Spacing  
 						_pillar_index+=1           
 					_pillar_x_index += ((-1)**(_fold_bundle_num))*(-Pillar_Spacing)
 					_fold_bundle_num += 1
 					#Add a Pillar on left of resonator meander
-					resonator_cell.add(gdspy.Round(Pillar_Layer,( -(Pillar_Clearance + Pillar_Radius),_pillar_y_index),Pillar_Radius))
+					resonator_cell.add(gdspy.Round(( -(Pillar_Clearance + Pillar_Radius),_pillar_y_index),Pillar_Radius, layer= Pillar_Layer))
 
 					#Add a Pillar on right of resonator meander
-					resonator_cell.add(gdspy.Round(Pillar_Layer,(Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,_pillar_y_index),Pillar_Radius))
+					resonator_cell.add(gdspy.Round((Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,_pillar_y_index),Pillar_Radius, layer= Pillar_Layer))
 					_pillar_index = 0
 					_pillar_y_index+=_pillar_y_Spacing
 			if _break_after_pillars == 1:
@@ -682,7 +680,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 				phase_midpoint = [trace.x,trace.y]
 				partial_turn(Resonator_Trace_Layer, trace, 0.5*np.pi*meander_radius - dif + trace.length , meander_radius, _angel_direction[_fold_num%2])
 			else:
-				trace.turn(Resonator_Trace_Layer, meander_radius, _angel_direction[_fold_num%2])
+				trace.turn( meander_radius, _angel_direction[_fold_num%2], layer= Resonator_Trace_Layer)
 		elif _break_after_pillars is not 1:
 			partial_turn(Resonator_Trace_Layer, trace, Resonator_Length, meander_radius,  _angel_direction[_fold_num%2])
 			_break_after_pillars = 1
@@ -696,7 +694,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 					phase_midpoint = [trace.x,trace.y]
 					partial_segment(Resonator_Trace_Layer, trace, _turn_extension - dif + trace.length , '-y')
 				else:
-					trace.segment(Resonator_Trace_Layer,_turn_extension, '-y')
+					trace.segment(_turn_extension, '-y', layer= Resonator_Trace_Layer)
 			elif _break_after_pillars is not 1:
 				partial_segment(Resonator_Trace_Layer, trace, Resonator_Length, '-y')
 				_break_after_pillars = 1
@@ -709,7 +707,7 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 				phase_midpoint = [trace.x,trace.y]
 				partial_turn(Resonator_Trace_Layer, trace, 0.5*np.pi*meander_radius - dif + trace.length , meander_radius, _angel_direction[_fold_num%2])
 			else:
-				trace.turn(Resonator_Trace_Layer, meander_radius, _angel_direction[_fold_num%2])
+				trace.turn(meander_radius, _angel_direction[_fold_num%2], layer= Resonator_Trace_Layer)
 		elif _break_after_pillars is not 1:
 			partial_turn(Resonator_Trace_Layer, trace, Resonator_Length, meander_radius,  _angel_direction[_fold_num%2])
 			_break_after_pillars = 1
@@ -722,15 +720,15 @@ def Draw_Resonator(Resonator_Name,Resonator_ID, Resonator_Trace_Layer = 1, Pilla
 	_pillar_y_index=_current_y_value-Resonator_Width/2 - Pillar_Clearance - Pillar_Radius
 	draw_coupler_zone_pillars()   
 	while _pillar_index*Pillar_Spacing <= _pillar_straight:
-		resonator_cell.add(gdspy.Round(Pillar_Layer, (_pillar_x_index, _pillar_y_index), Pillar_Radius))
+		resonator_cell.add(gdspy.Round( (_pillar_x_index, _pillar_y_index), Pillar_Radius, layer= Pillar_Layer))
 		_pillar_x_index += ((-1)**(_fold_bundle_num))*Pillar_Spacing  
 		_pillar_index+=1           
 	_pillar_x_index += ((-1)**(_fold_bundle_num))*(-Pillar_Spacing)
 	_fold_bundle_num += 1   
 	#Add a Pillar on left of resonator meander
-	resonator_cell.add(gdspy.Round(Pillar_Layer,( -(Pillar_Clearance + Pillar_Radius),_pillar_y_index),Pillar_Radius))
+	resonator_cell.add(gdspy.Round(( -(Pillar_Clearance + Pillar_Radius),_pillar_y_index),Pillar_Radius,layer= Pillar_Layer))
 	#Add a Pillar on right of resonator meander
-	resonator_cell.add(gdspy.Round(Pillar_Layer,(Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,_pillar_y_index),Pillar_Radius))
+	resonator_cell.add(gdspy.Round((Meander_Zone+Pillar_Clearance+Pillar_Radius-_meander_zone_delta,_pillar_y_index),Pillar_Radius, layer= Pillar_Layer))
 	 
 	#
 	#
@@ -773,12 +771,12 @@ def partial_turn(layer, trace, Resonator_Length, turn_radius, turn_direction):
     arc_angle = (Resonator_Length - trace.length)/turn_radius
     if turn_direction == 'r':
         arc_angle = -arc_angle
-    trace.turn(layer, turn_radius, arc_angle)
+    trace.turn( turn_radius, arc_angle, layer = layer)
     return trace
 
 def partial_segment(layer, trace, Resonator_Length, direction):
     length = Resonator_Length - trace.length
-    trace.segment(layer,length, direction)
+    trace.segment(length, direction, layer = layer)
     return trace
 
 
