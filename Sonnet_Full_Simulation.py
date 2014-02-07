@@ -12,7 +12,8 @@ internal_port = True
 Origin = np.array([0, 18000])
 ref = Make_Mask.Get_Cell_Reference('S8', Origin=tuple(Origin), Rotation=0, Magnification=None, X_reflection=True )
 
-polygons = ref.get_polygons(by_layer=True, depth=None)
+polygons = ref.get_polygons(by_spec=True, depth=None)
+polygons = {key[0]:polygons[key] for key in polygons.keys()} #this line for compatibility with gdspy 0.5
 
 parameters = Make_Mask.Mask_DB.Get_Mask_Data("SELECT Resonators.Width,Resonators.Coupler_Zone,Sensors.Through_Line_Width,Computed_Parameters.Meander_Pitch,Computed_Parameters.Coupler_Length,Computed_Parameters.Aux_Coupler_Length, Computed_Parameters.Phase_Midpoint, Computed_Parameters.Sensor_Origin,Computed_Parameters.Resonator_Origin FROM Computed_Parameters, Resonators, Sensors WHERE Computed_Parameters.resonator_id = Resonators.resonator_id AND Computed_Parameters.sensor_id = Sensors.sensor_id AND Sensors.sensor_id = %i" % (8), fetch = 'one')
 Resonator_Width = parameters[0]
@@ -286,7 +287,7 @@ def find_port_vertex(port_dict,bound):
 				
 				v1 = divmod(vertices[0]+1,points.shape[0])[1] # roll around vertex index if its at the end of the array
 				vertices.append((points[vertices[0]] + points[v1])/2)
-				print(points[vertices[0]],points[v1] )
+				#print(points[vertices[0]],points[v1] ) Commented out on Feb 7, 2014. 
 				port_dict[poly] = vertices
 				
 				## Here we extend the polygons found above to the edge of the box.
